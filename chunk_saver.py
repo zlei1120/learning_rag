@@ -1,0 +1,63 @@
+import hashlib
+import json
+import shutil
+from pathlib import Path
+from typing import List, Optional
+
+from langchain_core.documents import Document
+
+
+class ChunkSaver:
+    """保存分割出来的chunk，供后续的人工检查和调试使用
+    """
+    def __init__(
+        self,
+        chunks_dir: str | Path,
+        cache_prefix: str,
+        markdown_prefix: str,
+        markdown_title: str = "Chunk",
+    ) -> None:
+        """
+     
+        """
+        self.chunks_dir = Path(chunks_dir)
+        self.cache_prefix = cache_prefix
+        self.markdown_prefix = markdown_prefix
+        self.markdown_title = markdown_title
+        self.chunks_dir.mkdir(parents=True, exist_ok=True)
+
+    def save_chunks(self, documents: List[Document]) -> None:
+        """
+        保存 chunk 列表。
+        """
+        chunks_data = []
+        for idx, doc in enumerate(documents):
+            chunks_data.append(
+                {
+                    "chunk_index": idx,
+                    "content": doc.page_content,
+                    "metadata": doc.metadata,
+                }
+            )
+            self._save_single_chunk(doc, idx)
+
+   
+    def _save_single_chunk(self, chunk: Document, index: int) -> None:
+        """
+        把单个 chunk 保存成 Markdown 文件。
+        这个文件主要是给人看的，不参与程序读取逻辑。
+        """
+        source = chunk.metadata.get("file_name") or chunk.metadata.get("source") or "unknown"
+        content = f"""# {self.markdown_title} {index}
+## 元数据
+- **来源文件**: {source}
+- **字符数**: {len(chunk.page_content)}
+- **分块索引**: {chunk.metadata.get("chunk_index", index)}
+
+## 内容
+```
+{chunk.page_content}
+```
+"""
+        file_path = self.chunks_dir / f"{self.markdown_prefix}_{index:04d}.md"
+        file_path.write_text(content, encoding="utf-8")
