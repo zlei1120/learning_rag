@@ -13,7 +13,6 @@ class ChunkSaver:
     def __init__(
         self,
         chunks_dir: str | Path,
-        cache_prefix: str,
         markdown_prefix: str,
         markdown_title: str = "Chunk",
     ) -> None:
@@ -21,7 +20,6 @@ class ChunkSaver:
      
         """
         self.chunks_dir = Path(chunks_dir)
-        self.cache_prefix = cache_prefix
         self.markdown_prefix = markdown_prefix
         self.markdown_title = markdown_title
         self.chunks_dir.mkdir(parents=True, exist_ok=True)
