@@ -33,7 +33,10 @@ class FileLoader:
         if ext not in self.loaders:
             suported_exts = ", ".join(self.loaders.keys())
             raise ValueError(f"不支持的文件类型：{ext}，仅支持 {suported_exts}")
-        loader = self.loaders[ext](str(file_path))
+        if ext == ".txt":
+            loader = TextLoader(str(file_path), encoding="utf-8")
+        else:
+            loader = self.loaders[ext](str(file_path))
         documents = loader.load()
         # 为每个文档片段添加来源信息
         for doc in documents:

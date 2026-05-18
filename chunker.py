@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from loguru import logger
 
 from config import Config, get_config
-from embedder import BatchedEmbeddings
+from embedder import EmbeddingModel
 from chunk_saver import ChunkSaver
 
 
@@ -22,7 +22,6 @@ class SemanticChunker:
     ):
         """
         初始化语义分块器。
-
         Args:
             config: 配置对象
             breakpoint_threshold: 语义断点阈值（0-1，越大越容易断开）
@@ -33,7 +32,6 @@ class SemanticChunker:
         self.min_chunk_size = 100
         self.max_chunk_size = 512
         self.chunks_dir = Path(chunks_dir)
-
         # 创建存储目录。
         self.chunks_dir.mkdir(parents=True, exist_ok=True)
         self.chunk_saver = ChunkSaver(
@@ -57,15 +55,8 @@ class SemanticChunker:
 
     def _create_embedding(self) -> Embeddings:
         """创建嵌入模型实例。"""
-        logger.info("使用嵌入模型：{}", self.config.embedding_model)
-        kwargs = {
-            "model": self.config.embedding_model,
-            "api_key": self.config.openai_api_key,
-            "check_embedding_ctx_length": False,
-        }
-        if self.config.openai_base_url:
-            kwargs["base_url"] = self.config.openai_base_url
-        return BatchedEmbeddings(OpenAIEmbeddings(**kwargs))
+        return EmbeddingModel(self.config).embeddings
+
 
     # 这里有点看不明白，但是不重要，后面再补，只需要知道这个公式可以计算向量是否相似就行。
     def _compute_similarity(self, vec1: List[float], vec2: List[float]) -> float:

@@ -14,7 +14,6 @@ from langchain_openai import ChatOpenAI
 
 from config import Config, get_config
 from vector import VectorStoreManager
-# from simpleRAG.query import QueryRewriter
 # 默认的 RAG 提示模板，包含了对模型能力的描述和回答要求
 DEFAULT_RAG_PROMPT = """
 你是一个能够进行深度阅读理解、总结和分析的中文助手。
@@ -48,7 +47,6 @@ class RAGChain:
         self,
         config: Optional[Config] = None,
         vector_store_manager: Optional[VectorStoreManager] = None,
-        llm: Optional[ChatOpenAI] = None,
         prompt_template: Optional[str] = None,
     ):
         """
