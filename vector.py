@@ -67,8 +67,10 @@ class VectorStoreManager:
         if self._vectorstore is None or self.vectorstore._collection.count() == 0:
             logger.warning("向量存储为空，无法执行相似度搜索")
             return []
+        # 优先使用传入的top_k参数，如果未指定则使用config中的值
+        k = top_k if top_k else self.config.top_k
         results = self.vectorstore.similarity_search_with_score(
-            query, k=self.config.top_k or top_k
+            query, k=k
         )
         logger.info(f"相似度搜索完成: query='{query}', results={len(results)}")
         return results
