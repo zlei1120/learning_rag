@@ -127,6 +127,81 @@ class MutiFunctionalRAGChain:
                     seen_doc_keys.add(doc_key)
                     resdocs.append(doc)
         return resdocs
+
+    def _expand_parent_chunks(
+        self,
+        docs: List[Document],
+        window_size: int = 4,
+    ) -> List[Document]:
+        """
+        根据命中的子 chunk，补充同源文件的相邻 chunk 作为父级上下文。
+
+        当前项目没有单独保存“父文档”对象，所以这里用“相邻 chunk”模拟父级上下文：
+        - 子 chunk：检索和重排序真正命中的小片段；
+        - 父级上下文：只取命中片段前后 window_size 个 chunk；
+        - 作用：避免答案需要前后文拼接时，被 reranker 截断掉关键小片段。
+
+        注意：这里不会因为“同源文件”相同就把整个文件的所有 chunk 都塞进上下文。
+        即使一个文件有几百个 chunk，也只会围绕命中的 chunk 做有限窗口扩展。
+        """
+        # HybridRetriever 里保存的是参与 BM25 索引的全部 chunk。
+        # 用它可以根据 source_file + chunk_index 找回命中 chunk 的邻居。
+        all_docs = getattr(self.hybrid_retriever, "_documents", [])
+        if not docs or not all_docs:
+            return docs
+
+        # 建立索引：
+        # {
+        #   "来源文件路径": {
+        #       0: chunk0,
+        #       1: chunk1,
+        #   }
+        # }
+        # 这样后面拿到某个命中 chunk 时，可以快速找到同文件的前后 chunk。
+        source_chunk_map: dict[str, dict[int, Document]] = {}
+        for doc in all_docs:
+            source = doc.metadata.get("source_file") or doc.metadata.get("file_name")
+            chunk_index = doc.metadata.get("chunk_index")
+            if source is None or chunk_index is None:
+                continue
+            source_chunk_map.setdefault(str(source), {})[int(chunk_index)] = doc
+
+        expanded_docs = []
+        seen_doc_keys = set()
+        for doc in docs:
+            source = doc.metadata.get("source_file") or doc.metadata.get("file_name")
+            chunk_index = doc.metadata.get("chunk_index")
+
+            # 如果某个文档没有 chunk_index，说明它不是标准切分出来的 chunk。
+            # 这种情况没法找相邻 chunk，就保留它自身，避免误删。
+            if source is None or chunk_index is None:
+                doc_key = hash(doc.page_content)
+                if doc_key not in seen_doc_keys:
+                    seen_doc_keys.add(doc_key)
+                    expanded_docs.append(doc)
+                continue
+
+            chunks = source_chunk_map.get(str(source), {})
+
+            # 只取命中 chunk 附近的有限窗口，避免同源文件很大时把几百个 chunk 都塞进去。
+            # window_size=4 表示命中 chunk_index=15 时，最多额外带上 11~19 这些邻居。
+            start_index = int(chunk_index) - window_size
+            end_index = int(chunk_index) + window_size
+            candidate_indices = range(start_index, end_index + 1)
+
+            for current_index in candidate_indices:
+                parent_doc = chunks.get(current_index)
+                if parent_doc is None:
+                    continue
+
+                # 同一个 chunk 可能被多个命中 chunk 的窗口覆盖，这里统一去重。
+                doc_key = (str(source), current_index)
+                if doc_key in seen_doc_keys:
+                    continue
+                seen_doc_keys.add(doc_key)
+                expanded_docs.append(parent_doc)
+
+        return expanded_docs
     
     def ask(self, question: str) -> str:
         """处理用户问题，返回答案"""
@@ -138,9 +213,11 @@ class MutiFunctionalRAGChain:
         
         # docs = self.vector_store_manager.similarity_search(question)
         docs = self._retrieve_docs(querys_with_original)
-        # 增加重排序后的文档数量，为LLM提供更多上下文
+        # 先让 reranker 从粗检索结果里选出最相关的子 chunk。
         reranked = self._reranker.rerank(question, docs, top_k=self.config.top_k)
         docs = [doc for doc, _ in reranked]
+        # 再根据命中的子 chunk 扩展前后文，避免关键上下文被 top_k 截掉。
+        docs = self._expand_parent_chunks(docs)
         context = self._format_docs(docs)
         prompt = self.prompt_template.format(context=context, question=question)
         response = self.llm.invoke(prompt)
@@ -159,10 +236,13 @@ class MutiFunctionalRAGChain:
         docs = self._retrieve_docs(querys_with_original)
         logger.info(f"检索到 {len(docs)} 个文档")
         
-        # 重排序
-        reranked = self._reranker.rerank(question, docs, top_k=len(docs))
+        # 先让 reranker 只保留最相关的子 chunk。
+        reranked = self._reranker.rerank(question, docs, top_k=self.config.top_k)
         docs = [doc for doc, _ in reranked]
-        logger.info(f"重排序后保留 {len(docs)} 个文档")
+        logger.info(f"重排序后保留 {len(docs)} 个子 chunk")
+        # 再补充每个命中子 chunk 的前后相邻 chunk，形成更完整的父级上下文。
+        docs = self._expand_parent_chunks(docs)
+        logger.info(f"父子 chunk 扩展后保留 {len(docs)} 个文档")
         
         # 格式化上下文
         context = self._format_docs(docs)
