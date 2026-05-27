@@ -8,7 +8,6 @@ from langchain_community.document_loaders import (
     Docx2txtLoader,
     PyPDFLoader,
     TextLoader,
-    UnstructuredMarkdownLoader,
 )
 
 
@@ -17,7 +16,7 @@ class FileLoader:
 
     loaders = {
         ".txt": TextLoader,
-        ".md": UnstructuredMarkdownLoader,
+        ".md": TextLoader,
         ".pdf": PyPDFLoader,
         ".docx": Docx2txtLoader,
     }
@@ -33,7 +32,9 @@ class FileLoader:
         if ext not in self.loaders:
             suported_exts = ", ".join(self.loaders.keys())
             raise ValueError(f"不支持的文件类型：{ext}，仅支持 {suported_exts}")
-        if ext == ".txt":
+        if ext in [".txt", ".md"]:
+            # Markdown 必须按 UTF-8 原文读取，保留 `# / ## / ###` 标题符号。
+            # 如果用 UnstructuredMarkdownLoader，标题结构可能会被弱化，后续就没法按标题路径切分。
             loader = TextLoader(str(file_path), encoding="utf-8")
         else:
             loader = self.loaders[ext](str(file_path))

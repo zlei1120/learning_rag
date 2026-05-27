@@ -1,8 +1,6 @@
-import hashlib
-import json
-import shutil
+import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from langchain_core.documents import Document
 
@@ -28,6 +26,10 @@ class ChunkSaver:
         """
         保存 chunk 列表。
         """
+        # 每次重新切分前，先清理同前缀的旧调试文件。
+        for old_file in self.chunks_dir.glob(f"{self.markdown_prefix}_*.md"):
+            old_file.unlink()
+
         chunks_data = []
         for idx, doc in enumerate(documents):
             chunks_data.append(
@@ -51,11 +53,16 @@ class ChunkSaver:
 - **来源文件**: {source}
 - **字符数**: {len(chunk.page_content)}
 - **分块索引**: {chunk.metadata.get("chunk_index", index)}
+- **标题路径**: {chunk.metadata.get("title_path", "")}
+- **章节标题**: {chunk.metadata.get("section_title", "")}
+- **章节索引**: {chunk.metadata.get("section_index", "")}
+- **章节ID**: {chunk.metadata.get("section_id", "")}
+- **章节内分块索引**: {chunk.metadata.get("child_chunk_index", "")}
 
 ## 内容
-```
 {chunk.page_content}
-```
 """
         file_path = self.chunks_dir / f"{self.markdown_prefix}_{index:04d}.md"
         file_path.write_text(content, encoding="utf-8")
+
+

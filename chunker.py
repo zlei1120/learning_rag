@@ -11,6 +11,7 @@ from loguru import logger
 from config import Config, get_config
 from embedder import EmbeddingModel
 from chunk_saver import ChunkSaver
+from markdown_chunker import MarkdownChunker
 
 
 class SemanticChunker:
@@ -46,6 +47,10 @@ class SemanticChunker:
             is_separator_regex=False,
         )
         self._embedding = self._create_embedding()  # 把句子转成向量，用于计算相似度。
+        self._markdown_chunker = MarkdownChunker(
+            semantic_split_text=self._split_text,
+            max_chunk_size=self.max_chunk_size,
+        )
         logger.info(
             "语义分块器初始化：threshold={}, min={}, max={}",
             breakpoint_threshold,
@@ -111,6 +116,12 @@ class SemanticChunker:
         chunks = []
         logger.info("开始语义分块处理")
         for doc in documents:
+            if doc.metadata.get("file_type") == ".md":
+                # Markdown 有标题层级，不能和普通文本一样直接语义切分。
+                # 这里委托给 MarkdownChunker，避免 Markdown 专用逻辑污染通用语义切分器。
+                chunks.extend(self._markdown_chunker.split_document(doc))
+                continue
+
             chunk_texts = self._split_text(doc.page_content)
             for chunk_index, chunk_text in enumerate(chunk_texts):
                 # 复制 metadata，避免多个 chunk 共享同一个 dict。

@@ -15,7 +15,9 @@ class Config:
     embedding_model: str = "text-embedding-v4"
     chunk_size: int = 512
     chunk_overlap: int = 50
-    top_k: int = 5
+    top_k: int = 3
+    enable_parent_chunk_expansion: bool = False
+    parent_chunk_window_size: int = 4
     chroma_persist_dir: str = "./data/chroma_db"
 
     @classmethod
@@ -30,7 +32,12 @@ class Config:
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
             chunk_size=int(os.getenv("CHUNK_SIZE", "512")),
             chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "50")),
-            top_k=int(os.getenv("TOP_K", "5")),
+            top_k=int(os.getenv("TOP_K", "3")),
+            enable_parent_chunk_expansion=os.getenv(
+                "ENABLE_PARENT_CHUNK_EXPANSION",
+                "false",
+            ).lower() in ["1", "true", "yes", "on"],
+            parent_chunk_window_size=int(os.getenv("PARENT_CHUNK_WINDOW_SIZE", "4")),
             chroma_persist_dir="./data/chroma_db",
         )
 

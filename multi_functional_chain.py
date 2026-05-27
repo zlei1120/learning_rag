@@ -107,8 +107,12 @@ class MutiFunctionalRAGChain:
         formatted = []
         for i, doc in enumerate(docs, 1):
             source = doc.metadata.get("file_name", "未知来源")
+            title_path = doc.metadata.get("title_path")
             content = doc.page_content.strip()
-            formatted.append(f"[文档 {i}] (来源: {source})\n{content}")
+            if title_path:
+                formatted.append(f"[文档 {i}] (来源: {source}, 标题路径: {title_path})\n{content}")
+            else:
+                formatted.append(f"[文档 {i}] (来源: {source})\n{content}")
         # print("formatted__________",formatted)
         return "\n\n---\n\n".join(formatted)
     def _retrieve_docs(self, query: list[str]) -> List[Document]:
@@ -131,7 +135,7 @@ class MutiFunctionalRAGChain:
     def _expand_parent_chunks(
         self,
         docs: List[Document],
-        window_size: int = 4,
+        window_size: Optional[int] = None,
     ) -> List[Document]:
         """
         根据命中的子 chunk，补充同源文件的相邻 chunk 作为父级上下文。
@@ -185,8 +189,13 @@ class MutiFunctionalRAGChain:
 
             # 只取命中 chunk 附近的有限窗口，避免同源文件很大时把几百个 chunk 都塞进去。
             # window_size=4 表示命中 chunk_index=15 时，最多额外带上 11~19 这些邻居。
-            start_index = int(chunk_index) - window_size
-            end_index = int(chunk_index) + window_size
+            actual_window_size = (
+                window_size
+                if window_size is not None
+                else self.config.parent_chunk_window_size
+            )
+            start_index = int(chunk_index) - actual_window_size
+            end_index = int(chunk_index) + actual_window_size
             candidate_indices = range(start_index, end_index + 1)
 
             for current_index in candidate_indices:
@@ -217,7 +226,8 @@ class MutiFunctionalRAGChain:
         reranked = self._reranker.rerank(question, docs, top_k=self.config.top_k)
         docs = [doc for doc, _ in reranked]
         # 再根据命中的子 chunk 扩展前后文，避免关键上下文被 top_k 截掉。
-        docs = self._expand_parent_chunks(docs)
+        if self.config.enable_parent_chunk_expansion:
+            docs = self._expand_parent_chunks(docs)
         context = self._format_docs(docs)
         prompt = self.prompt_template.format(context=context, question=question)
         response = self.llm.invoke(prompt)
@@ -241,8 +251,11 @@ class MutiFunctionalRAGChain:
         docs = [doc for doc, _ in reranked]
         logger.info(f"重排序后保留 {len(docs)} 个子 chunk")
         # 再补充每个命中子 chunk 的前后相邻 chunk，形成更完整的父级上下文。
-        docs = self._expand_parent_chunks(docs)
-        logger.info(f"父子 chunk 扩展后保留 {len(docs)} 个文档")
+        if self.config.enable_parent_chunk_expansion:
+            docs = self._expand_parent_chunks(docs)
+            logger.info(f"父子 chunk 扩展后保留 {len(docs)} 个文档")
+        else:
+            logger.info("父子 chunk 扩展未启用")
         
         # 格式化上下文
         context = self._format_docs(docs)
