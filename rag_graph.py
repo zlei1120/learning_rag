@@ -9,7 +9,9 @@ from typing import Any, Literal, NotRequired, TypedDict
 
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 
 from multi_functional_chain import MutiFunctionalRAGChain
 from tool_router import ToolRouter
@@ -28,6 +30,7 @@ class RAGState(TypedDict):
     tool_route: NotRequired[str] # LLM 判断出来的工具路线：local_rag / web_search
     route_reason: NotRequired[str] # 工具路由原因
     web_results: NotRequired[str] # 真实互联网搜索结果
+    clarification: NotRequired[str] # 用户在中断后补充的澄清内容
 
 
 class RAGGraph:
@@ -37,6 +40,7 @@ class RAGGraph:
         self.chain = chain
         self.tool_router = ToolRouter(chain.llm)
         self.web_search_tool = WebSearchTool(chain.llm)
+        self.checkpointer = MemorySaver()
         self.app = self._build_graph()
 
     def _build_graph(self):
@@ -52,6 +56,7 @@ class RAGGraph:
         graph.add_node("generate_answer", self._generate_answer) # 生成答案
         graph.add_node("web_search", self._web_search) # 真实互联网搜索节点
         graph.add_node("answer_from_web", self._answer_from_web) # 基于互联网搜索结果回答
+        graph.add_node("clarify_user", self._clarify_user) # 中断并等待用户澄清
         graph.add_node("build_sources", self._build_sources) # 构建来源信息
 
         graph.add_edge(START, "route_tool") # 起点（用户输入） -> LLM 判断该用哪个工具
@@ -61,6 +66,7 @@ class RAGGraph:
             {
                 "local_rag": "rewrite_query",
                 "web_search": "web_search",
+                "clarify": "clarify_user",
             },
         )
         graph.add_edge("rewrite_query", "retrieve_docs") # 查询改写 -> 检索
@@ -71,23 +77,31 @@ class RAGGraph:
         graph.add_edge("generate_answer", "build_sources") # 生成答案 -> 构建来源信息
         graph.add_edge("web_search", "answer_from_web") # 互联网搜索 -> 生成互联网答案
         graph.add_edge("answer_from_web", "build_sources") # 互联网答案 -> 构建来源信息
+        graph.add_edge("clarify_user", "route_tool") # 用户澄清后回到路由节点重新判断
         graph.add_edge("build_sources", END) # 构建来源信息 -> 终点（返回结果）
 
-        return graph.compile() # 编译图结构
+        return graph.compile(checkpointer=self.checkpointer) # 编译图结构，并启用中断恢复
 
     def _route_tool(self, state: RAGState) -> dict[str, str]:
         """调用工具路由器，判断问题应该走本地 RAG 还是互联网搜索。"""
-        return self.tool_router.route(state["question"])
+        question = state["question"]
+        if state.get("clarification"):
+            question = f"{question}\n\n用户补充：{state['clarification']}"
+        return self.tool_router.route(question)
 
-    def _route_after_tool(self, state: RAGState) -> Literal["local_rag", "web_search"]:
+    def _route_after_tool(self, state: RAGState) -> Literal["local_rag", "web_search", "clarify"]:
         """根据 LLM 路由结果选择下一条边。"""
         if state.get("tool_route") == "web_search":
             return "web_search"
+        if state.get("tool_route") == "clarify" and not state.get("clarification"):
+            return "clarify"
         return "local_rag"
 
     def _rewrite_query(self, state: RAGState) -> dict[str, list[str]]:
         """把用户问题改写成多路查询，并保留原始问题。"""
         question = state["question"]
+        if state.get("clarification"):
+            question = f"{question}\n\n用户补充：{state['clarification']}"
         rewritten_queries = self.chain.query_rewriter.generate_multi_queries(question)
         queries = [question] + rewritten_queries
         return {"queries": queries}
@@ -136,15 +150,39 @@ class RAGGraph:
 
     def _web_search(self, state: RAGState) -> dict[str, str]:
         """调用互联网搜索工具。"""
-        return {"web_results": self.web_search_tool.search(state["question"])}
+        question = state["question"]
+        if state.get("clarification"):
+            question = f"{question}\n\n用户补充：{state['clarification']}"
+        return {"web_results": self.web_search_tool.search(question)}
 
     def _answer_from_web(self, state: RAGState) -> dict[str, str]:
         """调用互联网搜索回答工具。"""
-        answer = self.web_search_tool.answer(state["question"], state["web_results"])
+        question = state["question"]
+        if state.get("clarification"):
+            question = f"{question}\n\n用户补充：{state['clarification']}"
+        answer = self.web_search_tool.answer(question, state["web_results"])
         return {"answer": answer}
 
+    def _clarify_user(self, state: RAGState) -> dict[str, str]:
+        """暂停图执行，等待用户补充说明。"""
+        message = (
+            "我还不确定应该使用本地知识库还是互联网搜索。\n"
+            "请补充一下：你是想查本地文档内容，还是想搜索互联网最新信息？"
+        )
+        user_reply = interrupt(
+            {
+                "type": "clarification",
+                "question": message,
+                "route_reason": state.get("route_reason", ""),
+            }
+        )
+        return {
+            "clarification": str(user_reply),
+            "question": f"{state['question']}\n\n用户补充：{user_reply}",
+        }
+
     def _build_sources(self, state: RAGState) -> dict[str, list[dict[str, Any]]]:
-        """构建和 ask_with_source 类似的来源信息，方便调试每个答案来自哪些 chunk。"""
+        """构建和 ask_with_source 类似的来源信息"""
         if state.get("tool_route") == "web_search":
             return {
                 "sources": [
@@ -155,6 +193,17 @@ class RAGGraph:
                             "route": state.get("tool_route"),
                             "reason": state.get("route_reason", ""),
                         },
+                    }
+                ]
+            }
+
+        if state.get("tool_route") == "clarify":
+            return {
+                "sources": [
+                    {
+                        "content": state.get("route_reason", ""),
+                        "source": "clarify",
+                        "metadata": {"route": "clarify"},
                     }
                 ]
             }
@@ -171,14 +220,58 @@ class RAGGraph:
         ]
         return {"sources": sources}
 
-    def ask(self, question: str) -> str:
-        """只返回答案，行为类似 MutiFunctionalRAGChain.ask。"""
-        result = self.app.invoke({"question": question})
+    def ask(self, question: str, thread_id: str = "default") -> str:
+        """只返回答案"""
+        result = self.ask_result(question, thread_id=thread_id)
         return result["answer"]
 
-    def ask_with_source(self, question: str) -> dict[str, Any]:
-        """返回答案和来源，行为类似 MutiFunctionalRAGChain.ask_with_source。"""
-        result = self.app.invoke({"question": question})
+    def ask_result(self, question: str, thread_id: str = "default") -> dict[str, Any]:
+        """返回 LangGraph 原始结果，方便 CLI 处理 interrupt。"""
+        return self.app.invoke(
+            {"question": question},
+            config={"configurable": {"thread_id": thread_id}},
+        )
+
+    def resume(self, user_reply: str, thread_id: str = "default") -> dict[str, Any]:
+        """从 interrupt 暂停点继续执行图。"""
+        return self.app.invoke(
+            Command(resume=user_reply),
+            config={"configurable": {"thread_id": thread_id}},
+        )
+
+    def ask_interactive(
+        self,
+        question: str,
+        thread_id: str = "default",
+    ) -> dict[str, Any]:
+        """CLI 交互式调用：遇到 interrupt 时询问用户并自动 resume。"""
+        result = self.ask_result(question, thread_id=thread_id)
+        while isinstance(result, dict) and "__interrupt__" in result:
+            interrupt_value = self._get_interrupt_value(result)
+            if isinstance(interrupt_value, dict):
+                print(f"\n{interrupt_value.get('question', '请补充信息：')}")
+                if interrupt_value.get("route_reason"):
+                    print(f"路由原因：{interrupt_value['route_reason']}")
+            else:
+                print(f"\n{interrupt_value}")
+
+            user_reply = input("补充：").strip()
+            result = self.resume(user_reply, thread_id=thread_id)
+        return result
+
+    def _get_interrupt_value(self, result: dict[str, Any]) -> Any:
+        """从 LangGraph 返回结果中取出 interrupt 携带的信息。"""
+        interrupts = result.get("__interrupt__", [])
+        if not interrupts:
+            return {}
+        return interrupts[0].value
+
+    def ask_with_source(self, question: str, thread_id: str = "default") -> dict[str, Any]:
+        """返回答案和来源"""
+        result = self.app.invoke(
+            {"question": question},
+            config={"configurable": {"thread_id": thread_id}},
+        )
         return {
             "answer": result["answer"],
             "sources": result["sources"],

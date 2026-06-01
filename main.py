@@ -1,5 +1,6 @@
 
 import shutil
+import sys
 from loguru import logger
 
 from file_loader import FileLoader
@@ -11,6 +12,15 @@ from multi_functional_chain import MutiFunctionalRAGChain
 from rag_graph import RAGGraph
 
 config = get_config()
+
+
+def setup_logger():
+    """配置日志格式，只显示时分秒和毫秒。"""
+    logger.remove()
+    logger.add(
+        sys.stderr,
+        format="{time:HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}",
+    )
 
 def initialization(path:str):
     loader = FileLoader()
@@ -35,6 +45,7 @@ def clear_history_data():
     shutil.rmtree("./data/chunks", ignore_errors=True)
   
 def main():
+    setup_logger()
     clear_history_data()
     chunks, vector = initialization("./data/")
     # rag_chain = RAGChain(vector_store_manager=vector)
@@ -42,6 +53,7 @@ def main():
         documents=chunks, config=config, vector_store_manager=vector)
     rag_chain = RAGGraph(base_chain)
     show_sources = False
+    thread_id = "cli-session"
     while True:
           question = input("请输入您的问题: ").strip()
           if question.lower() in ["quit", "exit", "q"]:
@@ -55,16 +67,15 @@ def main():
                 continue
             
           print("\n 正在思考...\n")
+          result = rag_chain.ask_interactive(question, thread_id=thread_id)
           if show_sources:
-               result = rag_chain.ask_with_source(question)
                print(f"回答:\n{result['answer']}\n")
                print("参考来源:")
                for i, source in enumerate(result['sources'], 1):
                     print(f"  [{i}] {source['source']}")
                     print(f"      {source['content'][:100]}...\n")
           else:
-              result = rag_chain.ask(question)
-              print(f" 回答:\n{result}\n")
+              print(f" 回答:\n{result['answer']}\n")
 
 
 if __name__ == "__main__":
