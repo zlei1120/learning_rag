@@ -11,7 +11,7 @@ class Config:
     """llm配置信息"""
     openai_api_key: str = "" 
     openai_base_url: Optional[str] = None
-    model_name: str = "qwen-max-latest"
+    model_name: str = "qwen3.6-plus"
     embedding_model: str = "text-embedding-v4"
     chunk_size: int = 512
     chunk_overlap: int = 50
@@ -28,7 +28,7 @@ class Config:
         return cls(
             openai_api_key=api_key,
             openai_base_url=os.getenv("OPENAI_BASE_URL"),
-            model_name=os.getenv("MODEL_NAME", "qwen-max-latest"),
+            model_name=os.getenv("MODEL_NAME", "qwen3.6-plus"),
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
             chunk_size=int(os.getenv("CHUNK_SIZE", "512")),
             chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "50")),

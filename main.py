@@ -8,6 +8,8 @@ from config import  get_config
 from vector import VectorStoreManager
 from rag_chain import RAGChain
 from multi_functional_chain import MutiFunctionalRAGChain
+from rag_graph import RAGGraph
+
 config = get_config()
 
 def initialization(path:str):
@@ -36,8 +38,9 @@ def main():
     clear_history_data()
     chunks, vector = initialization("./data/")
     # rag_chain = RAGChain(vector_store_manager=vector)
-    rag_chain = MutiFunctionalRAGChain(
+    base_chain = MutiFunctionalRAGChain(
         documents=chunks, config=config, vector_store_manager=vector)
+    rag_chain = RAGGraph(base_chain)
     show_sources = False
     while True:
           question = input("请输入您的问题: ").strip()

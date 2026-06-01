@@ -1,0 +1,324 @@
+app:
+  description: 用来理解 LangGraph 的条件分支；不连接真实 LLM。
+  icon: 🧭
+  icon_background: '#EFF1F5'
+  mode: workflow
+  name: LangGraph 条件分支学习 Demo
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        sourceType: start
+        targetType: code
+      id: start-rewrite
+      source: start
+      sourceHandle: source
+      target: rewrite
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: code
+      id: rewrite-retrieve
+      source: rewrite
+      sourceHandle: source
+      target: retrieve
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: if-else
+      id: retrieve-check-context
+      source: retrieve
+      sourceHandle: source
+      target: check_context
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: if-else
+        targetType: code
+      id: check-context-answer
+      source: check_context
+      sourceHandle: 'true'
+      target: answer
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: if-else
+        targetType: code
+      id: check-context-fallback
+      source: check_context
+      sourceHandle: 'false'
+      target: fallback_answer
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: end
+      id: answer-end
+      source: answer
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        sourceType: code
+        targetType: end
+      id: fallback-end
+      source: fallback_answer
+      sourceHandle: source
+      target: fallback_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 输入问题。
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: question
+          max_length: 256
+          required: true
+          type: paragraph
+          variable: question
+      height: 90
+      id: start
+      position:
+        x: 30
+        y: 260
+      positionAbsolute:
+        x: 30
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(question: str) -> dict:\n    # 对应 LangGraph 的 rewrite_query 节点。\n    return {'query': question + ' 配料 用量'}\n"
+        code_language: python3
+        desc: 模拟查询改写。
+        outputs:
+          query:
+            type: string
+        selected: false
+        title: rewrite
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - question
+          variable: question
+      height: 54
+      id: rewrite
+      position:
+        x: 330
+        y: 260
+      positionAbsolute:
+        x: 330
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(query: str) -> dict:\n    # 对应 LangGraph 的 retrieve 节点。这里不接知识库，只写死一段模拟文档。\n    # 想测试兜底路径，把 has_context 改成 'no' 即可。\n    context = '标题路径：宫保鸡丁 > 计算\\n内容：莴笋 = 约 250g；油泼辣子 = 5g。'\n    return {'context': context, 'has_context': 'yes'}\n"
+        code_language: python3
+        desc: 模拟检索。
+        outputs:
+          context:
+            type: string
+          has_context:
+            type: string
+        selected: false
+        title: retrieve
+        type: code
+        variables:
+        - value_selector:
+          - rewrite
+          - query
+          variable: query
+      height: 54
+      id: retrieve
+      position:
+        x: 630
+        y: 260
+      positionAbsolute:
+        x: 630
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        conditions:
+        - comparison_operator: is
+          id: condition-has-context
+          value: 'yes'
+          variable_selector:
+          - retrieve
+          - has_context
+        desc: 对应 LangGraph 的条件边：上下文存在就回答，否则走兜底。
+        logical_operator: and
+        selected: false
+        title: check_context
+        type: if-else
+      height: 126
+      id: check_context
+      position:
+        x: 930
+        y: 260
+      positionAbsolute:
+        x: 930
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(question: str, context: str) -> dict:\n    # 正常回答分支。\n    return {'result': '根据模拟上下文回答：莴笋用量是约 250g。\\n\\n问题：' + question + '\\n\\n上下文：\\n' + context}\n"
+        code_language: python3
+        desc: 模拟正常回答。
+        outputs:
+          result:
+            type: string
+        selected: false
+        title: answer
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - question
+          variable: question
+        - value_selector:
+          - retrieve
+          - context
+          variable: context
+      height: 54
+      id: answer
+      position:
+        x: 1230
+        y: 180
+      positionAbsolute:
+        x: 1230
+        y: 180
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(question: str) -> dict:\n    # 兜底回答分支。\n    return {'result': '没有检索到足够上下文，无法回答：' + question}\n"
+        code_language: python3
+        desc: 模拟兜底回答。
+        outputs:
+          result:
+            type: string
+        selected: false
+        title: fallback_answer
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - question
+          variable: question
+      height: 54
+      id: fallback_answer
+      position:
+        x: 1230
+        y: 360
+      positionAbsolute:
+        x: 1230
+        y: 360
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 输出正常回答结果。
+        outputs:
+        - value_selector:
+          - answer
+          - result
+          variable: output
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end
+      position:
+        x: 1530
+        y: 180
+      positionAbsolute:
+        x: 1530
+        y: 180
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 输出兜底回答结果。
+        outputs:
+        - value_selector:
+          - fallback_answer
+          - result
+          variable: output
+        selected: false
+        title: Fallback End
+        type: end
+      height: 90
+      id: fallback_end
+      position:
+        x: 1530
+        y: 360
+      positionAbsolute:
+        x: 1530
+        y: 360
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.8
+  hash: ''
