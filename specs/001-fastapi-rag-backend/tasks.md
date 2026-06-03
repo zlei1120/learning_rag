@@ -22,11 +22,11 @@
 
 **目标**：把当前 demo 仓库拉到可实现 FastAPI 服务的基本结构
 
-- [ ] T001 创建 `app/`、`tests/`、`docs/`、`scripts/` 基础目录结构
-- [ ] T002 调整 [pyproject.toml](d:\code\learning_rag\pyproject.toml) 依赖，加入 FastAPI、Uvicorn、LangGraph、SQLAlchemy/SQLModel、psycopg、pgvector、pytest 等正式依赖
-- [ ] T003 [P] 新建 `app/main.py`、`app/core/config.py`、`app/core/logging.py`、`app/core/database.py`
-- [ ] T004 [P] 新建 `app/api/routes/health.py`、`app/api/routes/chat.py`、`app/api/routes/ingest.py`
-- [ ] T005 [P] 新建 `tests/unit/`、`tests/integration/`、`tests/contract/` 目录占位
+- [x] T001 创建 `app/`、`tests/`、`docs/`、`scripts/` 基础目录结构
+- [x] T002 调整 [pyproject.toml](d:\code\learning_rag\pyproject.toml) 依赖，加入 FastAPI、Uvicorn、LangGraph、SQLAlchemy/SQLModel、psycopg、pgvector、pytest 等正式依赖
+- [x] T003 [P] 新建 `app/main.py`、`app/core/config.py`、`app/core/logging.py`、`app/core/database.py`
+- [x] T004 [P] 新建 `app/api/routes/health.py`、`app/api/routes/chat.py`、`app/api/routes/ingest.py`
+- [x] T005 [P] 新建 `tests/unit/`、`tests/integration/`、`tests/contract/` 目录占位
 
 ---
 
@@ -37,12 +37,12 @@
 **关键说明**：这一阶段完成前，不建议开始具体业务实现。
 
 - [ ] T006 建立数据库基础模型与迁移框架，新增 `app/models/` 和 `migrations/`
-- [ ] T007 [P] 新建 `app/schemas/common.py`、`app/schemas/chat.py`、`app/schemas/ingest.py`
-- [ ] T008 [P] 新建统一异常模型和错误处理逻辑到 `app/api/deps.py` 或等价错误处理中间件
+- [x] T007 [P] 新建 `app/schemas/common.py`、`app/schemas/chat.py`、`app/schemas/ingest.py`
+- [x] T008 [P] 新建统一异常模型和错误处理逻辑到 `app/api/deps.py` 或等价错误处理中间件
 - [ ] T009 [P] 新建结构化日志与请求链路日志
-- [ ] T010 建立 `LangGraph` 运行时封装入口到 `app/services/orchestration_service.py`
-- [ ] T011 建立上下文预算配置模型和预算控制服务到 `app/services/context_budget_service.py`
-- [ ] T012 建立会话隔离基础约定：`session_id` 生成、读取、校验规则
+- [x] T010 建立 `LangGraph` 运行时封装入口到 `app/services/orchestration_service.py`
+- [x] T011 建立上下文预算配置模型和预算控制服务到 `app/services/context_budget_service.py`
+- [x] T012 建立会话隔离基础约定：`session_id` 生成、读取、校验规则
 
 **检查点**：完成后，项目应具备启动 FastAPI、连接数据库、加载配置和返回统一错误结构的能力。
 
@@ -62,9 +62,9 @@
 
 ### 实现
 
-- [ ] T016 [US1] 新建 `app/repositories/blog_post_repository.py`，从 `geminiBlog` 的 `Post` 表读取文章
-- [ ] T017 [P] [US1] 新建 `app/models/rag_document.py`、`app/models/rag_chunk.py`、`app/models/rag_embedding.py`
-- [ ] T018 [P] [US1] 新建 `app/models/rag_image.py`、`app/models/ingest_job.py`
+- [x] T016 [US1] 新建 `app/repositories/blog_post_repository.py`，从 `geminiBlog` 的 `Post` 表读取文章
+- [x] T017 [P] [US1] 新建 `app/models/rag_document.py`、`app/models/rag_chunk.py`、`app/models/rag_embedding.py`
+- [x] T018 [P] [US1] 新建 `app/models/rag_image.py`、`app/models/ingest_job.py`
 - [ ] T019 [P] [US1] 新建 `app/repositories/rag_document_repository.py`、`app/repositories/rag_chunk_repository.py`
 - [ ] T020 [P] [US1] 新建 `app/repositories/rag_image_repository.py`、`app/repositories/ingest_job_repository.py`
 - [ ] T021 [US1] 抽取并迁移 [markdown_chunker.py](d:\code\learning_rag\markdown_chunker.py) 逻辑到 `app/services/markdown_ingest_service.py`
@@ -87,7 +87,7 @@
 
 ### 测试
 
-- [ ] T028 [P] [US2] 为 `POST /api/v1/chat` 编写合同测试：`tests/contract/test_chat_api.py`
+- [x] T028 [P] [US2] 为 `POST /api/v1/chat` 编写合同测试：`tests/contract/test_chat_api.py`
 - [ ] T029 [P] [US2] 为图文召回问答编写集成测试：`tests/integration/test_chat_single_turn.py`
 - [ ] T030 [P] [US2] 为来源和图片返回结构编写单元测试：`tests/unit/test_chat_response_format.py`
 
@@ -167,7 +167,7 @@
 
 ### 实现
 
-- [ ] T057 [US5] 完善 `GET /health` 到 `app/api/routes/health.py`
+- [x] T057 [US5] 完善 `GET /health` 到 `app/api/routes/health.py`
 - [ ] T058 [US5] 编写开发文档到 `docs/backend/architecture.md`、`docs/backend/configuration.md`、`docs/backend/data-flow.md`
 - [ ] T059 [US5] 编写排错文档到 `docs/troubleshooting/database.md`、`docs/troubleshooting/api-debugging.md`、`docs/troubleshooting/ocr-and-images.md`
 - [ ] T060 [US5] 补齐项目 README 中的后端运行说明
