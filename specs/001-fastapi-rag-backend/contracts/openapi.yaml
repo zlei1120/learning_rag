@@ -1,0 +1,433 @@
+openapi: 3.1.0
+info:
+  title: learning_rag FastAPI RAG API
+  version: 0.1.0
+  description: |
+    `D:\code\learning_rag` 对外提供的 RAG 后端接口契约。
+    本契约面向 `E:\code\geminiBlog` 前端接入、后端实现和联调测试使用。
+servers:
+  - url: http://127.0.0.1:8000
+    description: 本地开发环境
+tags:
+  - name: health
+  - name: chat
+  - name: ingest
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: 健康检查
+      operationId: getHealth
+      responses:
+        "200":
+          description: 服务可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/chat:
+    post:
+      tags: [chat]
+      summary: 普通问答
+      operationId: postChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: 问答完成
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 触发限流
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/chat/stream:
+    post:
+      tags: [chat]
+      summary: 流式问答
+      operationId: postChatStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: 以 `text/event-stream` 返回流式事件
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  事件流格式建议包含：
+                  - `message.delta`
+                  - `message.completed`
+                  - `source`
+                  - `related_image`
+                  - `resume_required`
+                  - `error`
+  /api/v1/chat/resume:
+    post:
+      tags: [chat]
+      summary: 从中断状态继续会话
+      operationId: postChatResume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatResumeRequest"
+      responses:
+        "200":
+          description: 恢复后的问答结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "404":
+          description: 找不到对应会话或恢复点
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/chat/sessions/{session_id}:
+    get:
+      tags: [chat]
+      summary: 获取会话元数据
+      operationId: getChatSession
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 会话信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSessionResponse"
+        "404":
+          description: 找不到对应会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/ingest/post:
+    post:
+      tags: [ingest]
+      summary: 同步单篇文章
+      operationId: postIngestSingle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestPostRequest"
+      responses:
+        "202":
+          description: 已接受同步任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestJobResponse"
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/ingest/rebuild:
+    post:
+      tags: [ingest]
+      summary: 触发全量或范围重建
+      operationId: postIngestRebuild
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRebuildRequest"
+      responses:
+        "202":
+          description: 已接受重建任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestJobResponse"
+  /api/v1/ingest/jobs/{job_id}:
+    get:
+      tags: [ingest]
+      summary: 查询同步任务状态
+      operationId: getIngestJob
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 任务状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestJobResponse"
+        "404":
+          description: 找不到任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          examples: [ok]
+        service:
+          type: string
+          examples: [learning-rag-api]
+        version:
+          type: string
+        database:
+          type: string
+          examples: [ok]
+        graph_runtime:
+          type: string
+          examples: [ok]
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        session_id:
+          type: string
+          description: |
+            会话标识。前端已持有时必须传入；未传时后端可创建新会话并在响应中返回。
+        message:
+          type: string
+          minLength: 1
+        user_key:
+          type: string
+          description: 可选的用户标识；匿名场景可为空
+        include_sources:
+          type: boolean
+          default: true
+        include_related_images:
+          type: boolean
+          default: true
+        debug_context:
+          type: boolean
+          default: false
+          description: 是否返回预算与裁剪调试信息
+    ChatResumeRequest:
+      type: object
+      required:
+        - session_id
+        - message
+      properties:
+        session_id:
+          type: string
+        message:
+          type: string
+          minLength: 1
+    ChatResponse:
+      type: object
+      required:
+        - session_id
+        - answer
+        - status
+        - sources
+        - related_images
+      properties:
+        session_id:
+          type: string
+        answer:
+          type: string
+        status:
+          type: string
+          enum: [completed, resume_required, refused]
+        resume_token:
+          type: string
+          description: 当 `status=resume_required` 时可用于恢复会话
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceItem"
+        related_images:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedImage"
+        context_budget:
+          $ref: "#/components/schemas/ContextBudget"
+        usage:
+          $ref: "#/components/schemas/UsageInfo"
+    ChatSessionResponse:
+      type: object
+      required:
+        - session_id
+        - status
+      properties:
+        session_id:
+          type: string
+        status:
+          type: string
+          enum: [active, archived, expired]
+        summary:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_message_at:
+          type: string
+          format: date-time
+    IngestPostRequest:
+      type: object
+      properties:
+        post_id:
+          type: string
+        slug:
+          type: string
+        force_rebuild:
+          type: boolean
+          default: false
+      anyOf:
+        - required: [post_id]
+        - required: [slug]
+    IngestRebuildRequest:
+      type: object
+      required:
+        - scope
+      properties:
+        scope:
+          type: string
+          enum: [all, embeddings_only, image_features_only]
+        force:
+          type: boolean
+          default: false
+    IngestJobResponse:
+      type: object
+      required:
+        - job_id
+        - job_type
+        - status
+      properties:
+        job_id:
+          type: string
+        job_type:
+          type: string
+          enum: [single_post_sync, full_rebuild, embedding_rebuild, image_feature_rebuild]
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        target_slug:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        error_message:
+          type: string
+    SourceItem:
+      type: object
+      required:
+        - source_type
+        - label
+      properties:
+        source_type:
+          type: string
+          enum: [post_chunk, image_feature, memory]
+        label:
+          type: string
+        slug:
+          type: string
+        title_path:
+          type: string
+        content_excerpt:
+          type: string
+    RelatedImage:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+        alt_text:
+          type: string
+        caption:
+          type: string
+        source_slug:
+          type: string
+        title_path:
+          type: string
+    ContextBudget:
+      type: object
+      properties:
+        max_input_tokens:
+          type: integer
+        recent_messages_tokens:
+          type: integer
+        summary_memory_tokens:
+          type: integer
+        retrieved_chunks_tokens:
+          type: integer
+        image_feature_tokens:
+          type: integer
+        reserved_output_tokens:
+          type: integer
+    UsageInfo:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - message
+      properties:
+        error_code:
+          type: string
+          examples: [invalid_request]
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
