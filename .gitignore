@@ -1,5 +1,6 @@
 data/chunks
 data/chroma_db
+data/eval_chroma_db
 __pycache__/
 *.py[cod]
 *.egg-info/
