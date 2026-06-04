@@ -84,6 +84,8 @@ CHAT_CONTEXT_SUMMARY_TOKENS=2000
 CHAT_CONTEXT_RETRIEVAL_TOKENS=12000
 CHAT_CONTEXT_IMAGE_TOKENS=4000
 CHAT_CONTEXT_RESERVED_OUTPUT_TOKENS=3000
+CHAT_HISTORY_MESSAGE_LIMIT=8
+CHAT_SUMMARY_MAX_CHARS=600
 
 CHAT_RETRIEVAL_TOP_K=8
 CHAT_IMAGE_TOP_K=3
@@ -100,6 +102,8 @@ IMAGE_OCR_MAX_PIXELS=8388608
 - `OPENAI_BASE_URL` 未配置或为空时，后端默认使用百炼 OpenAI 兼容地址
 - `BLOG_PUBLIC_BASE_URL` 用于把 `/uploads/...` 这类博客图片相对路径拼成可访问地址
 - `CHAT_PARENT_CHUNK_WINDOW_SIZE` 用于控制命中 chunk 前后补充多少个相邻 chunk，适合教程类文章保留步骤上下文
+- `CHAT_HISTORY_MESSAGE_LIMIT` 用于限制每轮直接回放到模型里的最近消息条数
+- `CHAT_SUMMARY_MAX_CHARS` 用于控制会话摘要记忆的最大长度
 - 上下文预算参数是本期的关键调优项
 
 ## 四、安装依赖
@@ -248,6 +252,27 @@ Invoke-RestMethod `
 - 查看会话元数据
 - 验证会话隔离是否正常
 
+### 可选：使用恢复接口继续当前会话
+
+预期接口：
+
+```powershell
+Invoke-RestMethod `
+  -Method POST `
+  -Uri http://127.0.0.1:8000/api/v1/chat/resume `
+  -ContentType "application/json" `
+  -Body '{
+    "session_id":"demo-session-2",
+    "message":"继续解释一下刚才提到的账号权限。"
+  }'
+```
+
+当前阶段说明：
+
+- `/api/v1/chat/resume` 要求会话必须已存在
+- 当前会直接复用现有会话上下文继续回答
+- `LangGraph` 检查点当前使用进程内保存器，业务会话与消息历史仍持久化到 PostgreSQL
+
 ## 十、上下文预算调试
 
 本项目的一个核心点是：不能让检索文本、OCR 文本和历史消息无限膨胀。
@@ -315,6 +340,8 @@ Invoke-RestMethod `
 - OCR 文本长度
 - 最近消息保留长度
 - 摘要记忆长度
+- `CHAT_HISTORY_MESSAGE_LIMIT`
+- `CHAT_SUMMARY_MAX_CHARS`
 
 ## 十三、当前阶段的重要说明
 

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from app.core.config import Settings, get_settings
 from app.services.retrieval_service import RetrievedChunk, RetrievedImage
+
+if TYPE_CHECKING:
+    from app.services.session_service import ConversationMessage
 
 try:
     from openai import OpenAI
@@ -42,6 +46,8 @@ class AnswerService:
         question: str,
         chunks: list[RetrievedChunk],
         images: list[RetrievedImage],
+        summary_text: str | None = None,
+        recent_messages: list["ConversationMessage"] | None = None,
     ) -> AnswerResult:
         """生成单轮问答答案。"""
         context = self._format_context(chunks, images)
@@ -56,7 +62,15 @@ class AnswerService:
                 model=self.settings.chat_model,
                 messages=[
                     {"role": "system", "content": ANSWER_SYSTEM_PROMPT},
-                    {"role": "user", "content": f"【博客上下文】\n{context}\n\n【用户问题】\n{question}"},
+                    {
+                        "role": "user",
+                        "content": self._build_prompt(
+                            question=question,
+                            context=context,
+                            summary_text=summary_text,
+                            recent_messages=recent_messages or [],
+                        ),
+                    },
                 ],
                 temperature=0.2,
             )
@@ -112,3 +126,28 @@ class AnswerService:
             f"你的问题是：{question}\n"
             "如果需要更自然的总结式回答，请配置百炼 `OPENAI_API_KEY` 后再调用。"
         )
+
+    @staticmethod
+    def _build_prompt(
+        *,
+        question: str,
+        context: str,
+        summary_text: str | None,
+        recent_messages: list["ConversationMessage"],
+    ) -> str:
+        """把会话摘要、最近对话和博客上下文整理成最终提示词。"""
+        prompt_parts: list[str] = []
+
+        if summary_text:
+            prompt_parts.append(f"【会话摘要】\n{summary_text.strip()}")
+
+        if recent_messages:
+            history_lines = []
+            for message in recent_messages:
+                role_label = "用户" if message.role == "user" else "助手"
+                history_lines.append(f"{role_label}：{message.content.strip()}")
+            prompt_parts.append("【最近对话】\n" + "\n".join(history_lines))
+
+        prompt_parts.append(f"【博客上下文】\n{context}")
+        prompt_parts.append(f"【当前用户问题】\n{question}")
+        return "\n\n".join(prompt_parts)

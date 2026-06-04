@@ -13,6 +13,7 @@ if str(ROOT_DIR) not in sys.path:
 from app.core.config import reset_settings_cache
 from app.core.database import reset_database_cache
 from app.main import create_app
+from app.services.orchestration_service import reset_graph_checkpointer
 
 
 @pytest.fixture(autouse=True)
@@ -20,6 +21,7 @@ def reset_runtime_caches() -> None:
     """每个测试前重置配置和数据库缓存，避免环境状态串扰。"""
     reset_settings_cache()
     reset_database_cache()
+    reset_graph_checkpointer()
 
 
 @pytest.fixture()

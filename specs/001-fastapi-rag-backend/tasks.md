@@ -113,20 +113,20 @@
 
 ### 测试
 
-- [ ] T038 [P] [US3] 为会话查询接口编写合同测试：`tests/contract/test_chat_sessions_api.py`
-- [ ] T039 [P] [US3] 为多轮追问编写集成测试：`tests/integration/test_chat_multi_turn.py`
-- [ ] T040 [P] [US3] 为会话隔离和摘要记忆编写单元测试：`tests/unit/test_session_memory.py`
+- [x] T038 [P] [US3] 为会话查询接口编写合同测试：`tests/contract/test_chat_sessions_api.py`
+- [x] T039 [P] [US3] 为多轮追问编写集成测试：`tests/integration/test_chat_multi_turn.py`
+- [x] T040 [P] [US3] 为会话隔离和摘要记忆编写单元测试：`tests/unit/test_session_memory.py`
 
 ### 实现
 
-- [ ] T041 [P] [US3] 新建 `app/models/chat_session.py`、`app/models/chat_message.py`、`app/models/memory_record.py`
-- [ ] T042 [P] [US3] 新建 `app/repositories/chat_session_repository.py`、`app/repositories/chat_message_repository.py`、`app/repositories/memory_repository.py`
-- [ ] T043 [US3] 新建 `app/services/session_service.py`
-- [ ] T044 [US3] 新建 `app/services/memory_service.py`
-- [ ] T045 [US3] 在 `LangGraph` 运行时接入 checkpoint / persistence，并与业务会话映射
-- [ ] T046 [US3] 扩展问答图，加入会话恢复、摘要记忆更新、历史裁剪逻辑
-- [ ] T047 [US3] 实现 `GET /api/v1/chat/sessions/{session_id}` 到 `app/api/routes/chat.py`
-- [ ] T048 [US3] 实现必要时的 `POST /api/v1/chat/resume` 到 `app/api/routes/chat.py`
+- [x] T041 [P] [US3] 新建 `app/models/chat_session.py`、`app/models/chat_message.py`、`app/models/memory_record.py`
+- [x] T042 [P] [US3] 新建 `app/repositories/chat_session_repository.py`、`app/repositories/chat_message_repository.py`、`app/repositories/memory_repository.py`
+- [x] T043 [US3] 新建 `app/services/session_service.py`
+- [x] T044 [US3] 新建 `app/services/memory_service.py`
+- [x] T045 [US3] 在 `LangGraph` 运行时接入 checkpoint / persistence，并与业务会话映射
+- [x] T046 [US3] 扩展问答图，加入会话恢复、摘要记忆更新、历史裁剪逻辑
+- [x] T047 [US3] 实现 `GET /api/v1/chat/sessions/{session_id}` 到 `app/api/routes/chat.py`
+- [x] T048 [US3] 实现必要时的 `POST /api/v1/chat/resume` 到 `app/api/routes/chat.py`
 
 **检查点**：此时多轮问答可以独立上线测试。
 
@@ -182,7 +182,7 @@
 
 **目标**：清理跨模块问题，补齐一致性和验证
 
-- [ ] T063 [P] 运行并修复全部合同测试、集成测试、单元测试
+- [x] T063 [P] 运行并修复全部合同测试、集成测试、单元测试
 - [ ] T064 [P] 校验 [quickstart.md](d:\code\learning_rag\specs\001-fastapi-rag-backend\quickstart.md) 中的命令与说明
 - [ ] T065 上下文预算调优并记录默认参数
 - [ ] T066 统一日志字段、错误码和响应结构

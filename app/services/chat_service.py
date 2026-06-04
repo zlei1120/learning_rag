@@ -11,14 +11,19 @@ from app.schemas.common import UsageInfo
 from app.services.answer_service import AnswerResult, AnswerService
 from app.services.chat_response_formatter import build_related_images, build_source_items
 from app.services.context_budget_service import build_default_context_budget, trim_context_by_budget
+from app.services.memory_service import MemoryService
+from app.services.orchestration_service import get_graph_checkpointer
 from app.services.rerank_service import RerankService
 from app.services.retrieval_service import RetrievalResult, RetrievalService, RetrievedChunk, RetrievedImage
+from app.services.session_service import SessionContext, SessionService
 
 
 class ChatGraphState(TypedDict, total=False):
-    """LangGraph 单轮问答图状态。"""
+    """LangGraph 问答图状态。"""
 
     question: str
+    retrieval_query: str
+    session_context: SessionContext
     retrieval_result: RetrievalResult
     chunks: list[RetrievedChunk]
     images: list[RetrievedImage]
@@ -34,22 +39,62 @@ class ChatService:
         self.retrieval_service = RetrievalService(session, self.settings)
         self.rerank_service = RerankService(self.settings)
         self.answer_service = AnswerService(self.settings)
+        self.session_service = SessionService(session, self.settings)
+        self.memory_service = MemoryService(session, self.settings)
+        self.graph = self._build_graph()
 
     def answer(self, *, request: ChatRequest, session_id: str) -> ChatResponse:
-        """运行问答图并组装接口响应。"""
-        state = self._build_graph().invoke({"question": request.message})
+        """运行问答图、写入会话记录并组装接口响应。"""
+        session_context = self.session_service.get_or_create_context(
+            session_id=session_id,
+            user_key=request.user_key,
+        )
+        retrieval_query = self.session_service.build_retrieval_query(
+            question=request.message,
+            session_context=session_context,
+        )
+        state = self.graph.invoke(
+            {
+                "question": request.message,
+                "retrieval_query": retrieval_query,
+                "session_context": session_context,
+            },
+            config={
+                "configurable": {
+                    "thread_id": session_id,
+                    "checkpoint_ns": "chat",
+                }
+            },
+        )
         chunks = state.get("chunks", [])
         images = state.get("images", [])
         answer_result = state.get("answer_result") or AnswerResult(
             answer="根据当前已同步的文章内容，我还没有找到足够依据回答这个问题。"
         )
+        source_items = build_source_items(chunks, include_sources=request.include_sources)
+        related_images = build_related_images(images, include_related_images=request.include_related_images)
+
+        checkpoint_ref = self._resolve_checkpoint_ref(session_id)
+        persisted_context = self.session_service.record_exchange(
+            session_id=session_id,
+            user_key=request.user_key,
+            user_message=request.message,
+            assistant_message=answer_result.answer,
+            source_payload={
+                "sources": [item.model_dump(exclude_none=True) for item in source_items],
+                "related_images": [item.model_dump(exclude_none=True) for item in related_images],
+            },
+            checkpoint_ref=checkpoint_ref,
+        )
+        self.memory_service.refresh_session_summary(persisted_context)
+        self.session.commit()
 
         return ChatResponse(
             session_id=session_id,
             answer=answer_result.answer,
             status="completed",
-            sources=build_source_items(chunks, include_sources=request.include_sources),
-            related_images=build_related_images(images, include_related_images=request.include_related_images),
+            sources=source_items,
+            related_images=related_images,
             context_budget=build_default_context_budget(self.settings) if request.debug_context else None,
             usage=UsageInfo(
                 prompt_tokens=answer_result.prompt_tokens,
@@ -72,11 +117,11 @@ class ChatService:
         workflow.add_edge("expand_context", "trim_context")
         workflow.add_edge("trim_context", "generate")
         workflow.add_edge("generate", END)
-        return workflow.compile()
+        return workflow.compile(checkpointer=get_graph_checkpointer())
 
     def _retrieve_node(self, state: ChatGraphState) -> ChatGraphState:
         """召回文本块和图片文本特征。"""
-        result = self.retrieval_service.retrieve(state["question"])
+        result = self.retrieval_service.retrieve(state.get("retrieval_query") or state["question"])
         return {
             **state,
             "retrieval_result": result,
@@ -119,12 +164,29 @@ class ChatService:
 
     def _generate_node(self, state: ChatGraphState) -> ChatGraphState:
         """基于最终上下文生成回答。"""
+        session_context = state.get("session_context")
         answer_result = self.answer_service.generate_answer(
             question=state["question"],
             chunks=state.get("chunks", []),
             images=state.get("images", []),
+            summary_text=session_context.summary_text if session_context else None,
+            recent_messages=session_context.recent_messages if session_context else [],
         )
         return {
             **state,
             "answer_result": answer_result,
         }
+
+    def _resolve_checkpoint_ref(self, session_id: str) -> str | None:
+        """读取当前会话最近一次 LangGraph 检查点标识。"""
+        checkpoint_tuple = get_graph_checkpointer().get_tuple(
+            {
+                "configurable": {
+                    "thread_id": session_id,
+                    "checkpoint_ns": "chat",
+                }
+            }
+        )
+        if checkpoint_tuple is None:
+            return None
+        return checkpoint_tuple.config["configurable"].get("checkpoint_id")

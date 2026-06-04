@@ -5,10 +5,14 @@ from app.schemas.chat import ChatRequest
 from app.services.answer_service import AnswerResult
 from app.services.chat_service import ChatService
 from app.services.retrieval_service import RetrievalResult, RetrievedChunk, RetrievedImage
+from app.services.session_service import SessionContext
 
 
 class FakeSession:
     """单轮问答集成测试使用的空会话替身。"""
+
+    def commit(self) -> None:
+        return None
 
 
 class FakeRetrievalService:
@@ -81,16 +85,69 @@ class FakeAnswerService:
         question: str,
         chunks: list[RetrievedChunk],
         images: list[RetrievedImage],
+        summary_text=None,
+        recent_messages=None,
     ) -> AnswerResult:
         assert question == "数据库教程的主要步骤是什么？"
         assert len(chunks) == 2
         assert len(images) == 1
+        assert summary_text in (None, "")
+        assert recent_messages == []
         return AnswerResult(
             answer="主要步骤是先确认 PostgreSQL 服务和端口配置，再检查账号权限，最后执行迁移脚本创建 RAG 表结构。",
             prompt_tokens=120,
             completion_tokens=48,
             total_tokens=168,
         )
+
+
+class FakeSessionService:
+    """返回固定会话上下文，并接收持久化调用。"""
+
+    def get_or_create_context(self, *, session_id: str, user_key: str | None = None) -> SessionContext:
+        assert session_id == "sess_test_chat_001"
+        assert user_key is None
+        return SessionContext(
+            session_row_id="chat-session-001",
+            session_id=session_id,
+            user_key=None,
+            status="active",
+            summary_text=None,
+            recent_messages=[],
+            created_at=None,
+            updated_at=None,
+            last_message_at=None,
+            last_checkpoint_ref=None,
+        )
+
+    def build_retrieval_query(self, *, question: str, session_context: SessionContext) -> str:
+        assert session_context.session_id == "sess_test_chat_001"
+        return question
+
+    def record_exchange(
+        self,
+        *,
+        session_id: str,
+        user_key: str | None,
+        user_message: str,
+        assistant_message: str,
+        source_payload: dict[str, object] | None = None,
+        checkpoint_ref: str | None = None,
+    ) -> SessionContext:
+        assert session_id == "sess_test_chat_001"
+        assert user_key is None
+        assert user_message == "数据库教程的主要步骤是什么？"
+        assert "PostgreSQL" in assistant_message
+        assert source_payload is not None
+        return self.get_or_create_context(session_id=session_id, user_key=user_key)
+
+
+class FakeMemoryService:
+    """多轮记忆测试替身。"""
+
+    def refresh_session_summary(self, session_context: SessionContext) -> str | None:
+        assert session_context.session_id == "sess_test_chat_001"
+        return None
 
 
 def test_chat_single_turn_returns_answer_sources_and_images():
@@ -106,6 +163,8 @@ def test_chat_single_turn_returns_answer_sources_and_images():
     service.retrieval_service = FakeRetrievalService()
     service.rerank_service = FakeRerankService()
     service.answer_service = FakeAnswerService()
+    service.session_service = FakeSessionService()
+    service.memory_service = FakeMemoryService()
 
     response = service.answer(
         request=ChatRequest(

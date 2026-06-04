@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.common import ContextBudget, RelatedImage, SourceItem, UsageInfo
@@ -57,6 +59,6 @@ class ChatSessionResponse(BaseModel):
     session_id: str
     status: str
     summary: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
-    last_message_at: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    last_message_at: datetime | None = None

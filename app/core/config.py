@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     chat_context_retrieval_tokens: int = Field(default=12000, alias="CHAT_CONTEXT_RETRIEVAL_TOKENS")
     chat_context_image_tokens: int = Field(default=4000, alias="CHAT_CONTEXT_IMAGE_TOKENS")
     chat_context_reserved_output_tokens: int = Field(default=3000, alias="CHAT_CONTEXT_RESERVED_OUTPUT_TOKENS")
+    chat_history_message_limit: int = Field(default=8, alias="CHAT_HISTORY_MESSAGE_LIMIT")
+    chat_summary_max_chars: int = Field(default=600, alias="CHAT_SUMMARY_MAX_CHARS")
 
     chat_retrieval_top_k: int = Field(default=8, alias="CHAT_RETRIEVAL_TOP_K")
     chat_image_top_k: int = Field(default=3, alias="CHAT_IMAGE_TOP_K")
