@@ -7,6 +7,7 @@
 - `E:\code\geminiBlog\src\components\chat-bot.tsx`
 - `E:\code\geminiBlog\src\lib\chat-api.ts`
 - `E:\code\geminiBlog\src\app\api\chat\route.ts`
+- `E:\code\geminiBlog\src\app\api\chat\stream\route.ts`
 
 ## 当前落地状态
 
@@ -19,17 +20,23 @@
 - AI 消息已支持展示 `sources` 和 `relatedImages`
 - 顶部“新对话”按钮会清空本地会话并重新开始
 
-当前仍未接入：
+当前已经接入的流式能力：
 
-- `POST /api/v1/chat/stream`
-- SSE 增量事件消费
-- 真正的流式打字机输出
+- 浏览器请求博客自己的 `/api/chat/stream`
+- Next.js route handler 代理到 FastAPI `POST /api/v1/chat/stream`
+- 前端通过 `fetch + ReadableStream` 消费 SSE 事件
+- AI 消息会先显示思考占位，再随着 `message.delta` 增量更新正文
+- `message.completed` 会回填最终 `sources`、`relatedImages` 和 `session_id`
+
+当前仍需要记住的一点：
+
+- 这是“后端拆包版伪流式”，不是模型原生 token streaming
 
 ## 推荐接入顺序
 
 1. 已完成：普通问答 `POST /api/v1/chat`
 2. 已完成：来源和图片展示
-3. 下一步：升级到 `POST /api/v1/chat/stream`
+3. 已完成：流式 `POST /api/v1/chat/stream`
 4. 后续可补：更细的会话恢复体验和调试面板
 
 ## 一、先改消息结构
@@ -145,7 +152,7 @@ export async function requestChat(payload: ChatRequest): Promise<ChatResponse> {
 
 ### 代理层说明
 
-博客侧代理文件：
+博客侧普通问答代理文件：
 
 - `E:\code\geminiBlog\src\app\api\chat\route.ts`
 
@@ -201,6 +208,21 @@ window.sessionStorage.setItem(sessionKey, result.session_id);
 
 ## 四、流式模式接入：替换打字机体验
 
+### 当前已落地
+
+博客侧流式代理文件：
+
+- `E:\code\geminiBlog\src\app\api\chat\stream\route.ts`
+
+聊天组件当前已经切到流式提交逻辑：
+
+1. 先插入用户消息
+2. 预插入一个 `status=streaming` 的 AI 占位消息
+3. 请求 `/api/chat/stream`
+4. 收到 `message.delta` 后持续更新当前 AI 消息正文
+5. 收到 `message.completed` 后回填完整答案、来源和图片
+6. 如果本地 `session_id` 失效并返回 `404`，会清掉旧会话并自动重试首轮流式问答
+
 ### 关键事实
 
 - `POST /api/v1/chat/stream` 返回的是 `text/event-stream`
@@ -224,7 +246,7 @@ export async function requestChatStream(
   payload: ChatRequest,
   onEvent: StreamEventHandler,
 ) {
-  const response = await fetch("http://127.0.0.1:8000/api/v1/chat/stream", {
+  const response = await fetch("/api/chat/stream", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -299,7 +321,7 @@ export async function requestChatStream(
 推荐在 `handleSubmit` 中做下面这几件事：
 
 1. 先插入用户消息
-2. 预插入一个空的 AI 消息占位
+2. 预插入一个 `status=streaming` 的 AI 消息占位
 3. 置 `isTyping=true`
 4. 发起流式请求
 5. 在 `message.delta` 中持续更新 AI 消息文本
@@ -355,14 +377,13 @@ export async function requestChatStream(
 - 展示统一兜底文案
 - 联调期额外打印 `X-Request-ID`
 
-## 十、推荐的最小落地版本
+## 十、当前最小可用版本
 
-如果你想先最快接通 `chat-bot.tsx`，建议按这个最小范围改：
+当前博客弹窗已经至少具备下面这些正式能力：
 
 1. 删除 `MOCK_ANSWERS`
 2. 删除 `setTimeout + setInterval` Mock 逻辑
-3. 接 `POST /api/v1/chat`
-4. 把 `session_id` 存入 `sessionStorage`
-5. 在 AI 消息下方把 `sources` 和 `relatedImages` 展示出来
-
-等这个稳定后，再升级到 `/api/v1/chat/stream`。
+3. 接普通问答 `POST /api/v1/chat`
+4. 接流式问答 `POST /api/v1/chat/stream`
+5. 把 `session_id` 存入 `sessionStorage`
+6. 在 AI 消息下方展示 `sources` 和 `relatedImages`
