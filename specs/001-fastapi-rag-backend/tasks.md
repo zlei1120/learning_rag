@@ -67,7 +67,7 @@
 - [x] T018 [P] [US1] 新建 `app/models/rag_image.py`、`app/models/ingest_job.py`
 - [x] T019 [P] [US1] 新建 `app/repositories/rag_document_repository.py`、`app/repositories/rag_chunk_repository.py`
 - [x] T020 [P] [US1] 新建 `app/repositories/rag_image_repository.py`、`app/repositories/ingest_job_repository.py`
-- [x] T021 [US1] 抽取并迁移 [markdown_chunker.py](d:\code\learning_rag\markdown_chunker.py) 逻辑到 `app/services/markdown_ingest_service.py`
+- [x] T021 [US1] 抽取并迁移 [markdown_chunker.py](d:\code\learning_rag\legacy\cli_demo\markdown_chunker.py) 逻辑到 `app/services/markdown_ingest_service.py`
 - [x] T022 [US1] 新建 `app/services/blog_source_service.py`，负责把 `Post` 转为内部 `Document`
 - [x] T023 [US1] 新建 `app/services/embedding_service.py`，封装百炼 `text-embedding-v4`
 - [x] T024 [US1] 新建 `app/services/image_understanding_service.py`，封装 OCR 和图片说明生成

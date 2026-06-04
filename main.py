@@ -8,6 +8,18 @@ from pathlib import Path
 from loguru import logger
 
 
+def ensure_legacy_cli_path() -> Path:
+    """确保旧版 CLI Demo 目录可被当前根入口导入。"""
+    legacy_dir = Path(__file__).resolve().parent / "legacy" / "cli_demo"
+    if not legacy_dir.exists():
+        raise FileNotFoundError(f"未找到旧版 CLI Demo 目录：{legacy_dir}")
+
+    legacy_dir_str = str(legacy_dir)
+    if legacy_dir_str not in sys.path:
+        sys.path.insert(0, legacy_dir_str)
+    return legacy_dir
+
+
 def setup_logger() -> None:
     """配置旧版 CLI Demo 使用的简化日志格式。"""
     logger.remove()
@@ -75,6 +87,7 @@ def clear_history_data() -> None:
 
 def run_legacy_cli(*, data_path: str, preserve_legacy_data: bool) -> int:
     """显式运行旧版 CLI Demo。"""
+    ensure_legacy_cli_path()
     from multi_functional_chain import MutiFunctionalRAGChain
     from rag_graph import RAGGraph
 
@@ -127,6 +140,8 @@ def print_fastapi_guidance() -> None:
     print("  specs/001-fastapi-rag-backend/quickstart.md")
     print("如果确实要进入旧版本地 CLI Demo，请显式执行：")
     print("  uv run python main.py --legacy-cli")
+    print("旧版脚本已统一归档到：")
+    print("  legacy/cli_demo/")
 
 
 def main(argv: list[str] | None = None) -> int:

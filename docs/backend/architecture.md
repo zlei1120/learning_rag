@@ -122,6 +122,12 @@
 - `image_understanding_service.py`
   OCR / caption 与图片文本特征生成
 
+### `legacy/cli_demo`
+
+- 迁移期保留的旧版本地 CLI Demo、评估脚本和实验模块
+- 不属于当前 FastAPI 正式运行时
+- 仅通过根目录 `main.py --legacy-cli` 按需加载
+
 ## 三、两条核心业务链
 
 ### 1. 同步链路

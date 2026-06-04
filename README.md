@@ -181,11 +181,16 @@ uv run alembic upgrade head --sql
 
 ## 旧 Demo 与实验文件
 
-仓库里仍保留了一部分旧的 CLI / 实验文件，例如：
+仓库里仍保留了一部分旧的 CLI / 实验文件，但现在已经统一归档到 `legacy/cli_demo/`，例如：
 
-- `main.py`
-- `multi_functional_chain.py`
-- `rag_graph.py`
-- `eval_rag.py`
+- `legacy/cli_demo/multi_functional_chain.py`
+- `legacy/cli_demo/rag_graph.py`
+- `legacy/cli_demo/eval_rag.py`
+- `legacy/README.md`
+
+根目录 `main.py` 现在只是迁移期入口：
+
+- 默认提示使用 FastAPI 主线
+- 只有显式传入 `--legacy-cli` 时才会加载 `legacy/cli_demo/` 中的旧版脚本
 
 这些文件当前主要用于历史参考、评估或迁移过渡，不再是对外 FastAPI 后端的主入口。

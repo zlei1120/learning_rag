@@ -196,7 +196,7 @@ D:\code\learning_rag\
 
 - 采用标准 FastAPI 后端结构，而不是继续以扁平脚本文件为主。
 - 将“API 层、服务层、仓储层、数据模型层、文档层”明确拆开，便于长期维护。
-- 现有 `chunker.py`、`markdown_chunker.py`、`multi_functional_chain.py` 等逻辑将择机迁移到 `app/services` 或 `app/utils` 下，而不是继续直接作为顶层脚本入口。
+- 现有 `chunker.py`、`markdown_chunker.py`、`multi_functional_chain.py` 等逻辑将择机迁移到 `app/services` 或 `app/utils` 下；在完全收敛前，迁移期统一归档到 `legacy/cli_demo/`，不再继续作为顶层脚本入口。
 - `geminiBlog` 不是本仓库的子目录，不会纳入本项目代码树；它作为外部集成方通过文档和接口契约接入。
 - 会话、记忆、上下文预算单独建模，由 `LangGraph` 负责编排运行时状态；未来若接入 Deep Agents，也优先复用这些持久化结构和服务接口。
 
