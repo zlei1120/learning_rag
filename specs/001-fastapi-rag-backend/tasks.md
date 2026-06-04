@@ -163,16 +163,16 @@
 
 ### 测试
 
-- [ ] T056 [P] [US5] 为健康检查和配置错误场景编写集成测试：`tests/integration/test_health_and_bootstrap.py`
+- [x] T056 [P] [US5] 为健康检查和配置错误场景编写集成测试：`tests/integration/test_health_and_bootstrap.py`
 
 ### 实现
 
 - [x] T057 [US5] 完善 `GET /health` 到 `app/api/routes/health.py`
-- [ ] T058 [US5] 编写开发文档到 `docs/backend/architecture.md`、`docs/backend/configuration.md`、`docs/backend/data-flow.md`
-- [ ] T059 [US5] 编写排错文档到 `docs/troubleshooting/database.md`、`docs/troubleshooting/api-debugging.md`、`docs/troubleshooting/ocr-and-images.md`
-- [ ] T060 [US5] 补齐项目 README 中的后端运行说明
-- [ ] T061 [US5] 编写脚本 `scripts/sync_single_post.py`、`scripts/sync_all_posts.py` 作为运维辅助入口
-- [ ] T062 [US5] 补充未来对接 Deep Agents 的扩展说明到开发文档，但不在一期引入其运行依赖
+- [x] T058 [US5] 编写开发文档到 `docs/backend/architecture.md`、`docs/backend/configuration.md`、`docs/backend/data-flow.md`
+- [x] T059 [US5] 编写排错文档到 `docs/troubleshooting/database.md`、`docs/troubleshooting/api-debugging.md`、`docs/troubleshooting/ocr-and-images.md`
+- [x] T060 [US5] 补齐项目 README 中的后端运行说明
+- [x] T061 [US5] 编写脚本 `scripts/sync_single_post.py`、`scripts/sync_all_posts.py` 作为运维辅助入口
+- [x] T062 [US5] 补充未来对接 Deep Agents 的扩展说明到开发文档，但不在一期引入其运行依赖
 
 **检查点**：此时项目具备交付和后续维护条件。
 
@@ -183,7 +183,7 @@
 **目标**：清理跨模块问题，补齐一致性和验证
 
 - [x] T063 [P] 运行并修复全部合同测试、集成测试、单元测试
-- [ ] T064 [P] 校验 [quickstart.md](d:\code\learning_rag\specs\001-fastapi-rag-backend\quickstart.md) 中的命令与说明
+- [x] T064 [P] 校验 [quickstart.md](d:\code\learning_rag\specs\001-fastapi-rag-backend\quickstart.md) 中的命令与说明
 - [ ] T065 上下文预算调优并记录默认参数
 - [ ] T066 统一日志字段、错误码和响应结构
 - [ ] T067 清理旧的 CLI demo 入口，只保留迁移期必要文件

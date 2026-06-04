@@ -1,154 +1,186 @@
 # learning_rag
 
-这是一个用于学习 RAG、LangChain、LangGraph 和 LangSmith 的本地知识库问答项目。
+当前仓库的主线目标，已经不是单纯的本地 CLI RAG Demo，而是：
 
-当前项目支持：
+- 把 `D:\code\learning_rag` 改造成可供 `E:\code\geminiBlog` 调用的 FastAPI RAG 后端
 
-- 从 `data/` 目录加载文档。
-- 对普通文本和 Markdown 文档进行分块。
-- 使用向量检索、BM25 和 reranker 做混合检索。
-- 使用 `MutiFunctionalRAGChain` 执行本地 RAG 问答。
-- 使用 `RAGGraph` 演示 LangGraph 节点编排、工具路由和 interrupt。
-- 使用 LangSmith 做 tracing 和标准化评估。
+当前后端已经具备这些核心能力：
 
-## 环境变量
+- 从 `geminiBlog` 的 PostgreSQL `Post` 表读取文章真源
+- 解析 Markdown 正文、标题路径和图片引用
+- 生成文本向量、图片 OCR / caption 文本特征
+- 基于 `LangGraph` 执行图文问答
+- 支持按 `session_id` 隔离的多轮会话和摘要记忆
+- 提供普通问答、流式问答、会话查询和同步接口
+- 提供博客前端接入文档、维护文档和排错文档
 
-在 `.env` 中配置模型和 LangSmith 信息：
+## 当前主线文档
+
+### API 与接入
+
+- `docs/api/overview.md`
+- `docs/api/chat.md`
+- `docs/api/ingest.md`
+- `docs/integration/geminiblog-chatbot.md`
+
+### 后端维护
+
+- `docs/backend/architecture.md`
+- `docs/backend/configuration.md`
+- `docs/backend/data-flow.md`
+
+### 排错
+
+- `docs/troubleshooting/database.md`
+- `docs/troubleshooting/api-debugging.md`
+- `docs/troubleshooting/ocr-and-images.md`
+
+### 规格与计划
+
+- `specs/001-fastapi-rag-backend/spec.md`
+- `specs/001-fastapi-rag-backend/plan.md`
+- `specs/001-fastapi-rag-backend/research.md`
+- `specs/001-fastapi-rag-backend/data-model.md`
+- `specs/001-fastapi-rag-backend/quickstart.md`
+- `specs/001-fastapi-rag-backend/tasks.md`
+
+## 快速启动
+
+### 1. 安装依赖
+
+```powershell
+uv sync
+```
+
+### 2. 配置 `.env`
+
+最少建议配置：
 
 ```env
-OPENAI_API_KEY=你的模型服务 Key
+DATABASE_URL=postgresql+psycopg://blog:blog_password@127.0.0.1:5432/blog
+RAG_SCHEMA=rag
+
+OPENAI_API_KEY=你的百炼Key
 OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-MODEL_NAME=qwen3.6-plus
-
-LANGSMITH_TRACING=true
-LANGSMITH_PROJECT=learning
-LANGSMITH_API_KEY=你的 LangSmith Key
-LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+RERANK_BASE_URL=https://dashscope.aliyuncs.com/compatible-api/v1
+BLOG_PUBLIC_BASE_URL=https://你的博客域名
 ```
 
-说明：
+更多配置项请看：
 
-- `LANGSMITH_TRACING=true` 会开启 LangSmith 自动追踪。
-- `LANGSMITH_PROJECT` 是 tracing 所属项目。
-- `.env` 已加入 `.gitignore`，不要提交真实 Key。
+- `docs/backend/configuration.md`
 
-## 运行问答
+### 3. 初始化数据库
 
 ```powershell
-uv run python main.py
+uv run alembic upgrade head
 ```
 
-运行后可以在命令行输入问题。输入：
+如果目标库还没启用 `pgvector`，先执行：
 
-```text
-sources
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-可以切换是否展示参考来源。
-
-## LangSmith 追踪
-
-只要 `.env` 中配置了 LangSmith 环境变量，LangChain / LangGraph 调用会自动上报 trace。
-
-在 LangSmith 后台可以查看：
-
-- 每次用户输入。
-- 检索到的 context。
-- LLM 调用的 prompt 和输出。
-- LangGraph 每个节点的执行过程。
-- 工具路由、检索、重排、生成答案等步骤的耗时。
-
-如果在 `Datasets & Experiments` 中看不到数据集，切到 `All` 视图查找。
-
-## LangSmith 标准化评估
-
-评估脚本是：
-
-```text
-eval_rag.py
-```
-
-它会自动创建或复用 LangSmith 数据集：
-
-```text
-learning-rag-light-eval
-```
-
-默认只跑前 3 条样例，方便先验证流程：
+### 4. 启动服务
 
 ```powershell
-uv run python eval_rag.py
+uv run uvicorn app.main:app --reload
 ```
 
-调整样例数量：
+默认地址：
+
+- `http://127.0.0.1:8000`
+
+健康检查：
 
 ```powershell
-$env:EVAL_LIMIT="5"
-uv run python eval_rag.py
+Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health
 ```
 
-指定裁判模型：
+## 常用命令
+
+### 同步单篇文章
 
 ```powershell
-$env:EVAL_JUDGE_MODEL="qwen3.6-plus"
-uv run python eval_rag.py
+uv run python scripts/sync_single_post.py --slug hello-nextjs
 ```
 
-评估脚本使用独立向量库：
-
-```text
-data/eval_chroma_db
-```
-
-该目录是运行产物，已加入 `.gitignore`。
-
-## 当前评估指标
-
-`eval_rag.py` 当前直接评估 `MutiFunctionalRAGChain`，不经过 LangGraph 工具路由。
-
-评估器包括：
-
-- `answer_not_empty`：检查回答是否为空。
-- `source_hit`：检查返回来源是否命中预期文档。
-- `answer_correctness`：使用大模型裁判比较实际回答和标准答案，返回 0 到 1 的正确性分数和中文理由。
-
-`answer_correctness` 的评分规则：
-
-- `1.0`：关键事实完全正确，允许措辞不同。
-- `0.7`：主要事实正确，但有轻微遗漏。
-- `0.4`：只答对一部分，或遗漏重要条件。
-- `0.0`：关键事实错误、答非所问，或编造信息。
-
-## 失败样本判断
-
-建议在 LangSmith 的 experiment 中按以下条件过滤失败或边界样本：
-
-```text
-answer_correctness < 0.8
-```
-
-或者：
-
-```text
-source_hit = false
-```
-
-一般可以这样分析：
-
-- `source_hit = false` 且 `answer_correctness` 低：优先检查检索和重排。
-- `source_hit = true` 但 `answer_correctness` 低：优先检查 prompt 和生成逻辑。
-- `answer_not_empty = false`：说明调用链路或模型输出异常。
-
-## 常用开发命令
-
-语法检查：
+### 全量重建
 
 ```powershell
-uv run python -m py_compile eval_rag.py
+uv run python scripts/sync_all_posts.py --scope all
 ```
 
-查看 Git 状态：
+### 运行测试
 
 ```powershell
-git status --short
+uv run pytest
 ```
+
+### 查看迁移 SQL
+
+```powershell
+uv run alembic upgrade head --sql
+```
+
+## 接口范围
+
+当前对外接口主要包括：
+
+- `GET /health`
+- `POST /api/v1/chat`
+- `POST /api/v1/chat/stream`
+- `POST /api/v1/chat/resume`
+- `GET /api/v1/chat/sessions/{session_id}`
+- `POST /api/v1/ingest/post`
+- `POST /api/v1/ingest/rebuild`
+- `GET /api/v1/ingest/jobs/{job_id}`
+
+完整契约：
+
+- `specs/001-fastapi-rag-backend/contracts/openapi.yaml`
+
+## 当前实现的重要说明
+
+### 1. 流式接口当前是伪流式
+
+- 后端先拿完整回答
+- 再拆成 SSE 事件输出
+
+### 2. 同步接口当前仍是请求内执行
+
+- 接口返回 `202`
+- 但当前还没有真正拆到异步任务队列
+
+### 3. 图级 checkpoint 当前使用内存保存器
+
+- `LangGraph` 运行时 checkpoint 在进程重启后不会保留
+- 但业务消息、会话摘要和会话状态仍会写入 PostgreSQL
+
+## 与 `geminiBlog` 的关系
+
+当前博客前端接入点：
+
+- `E:\code\geminiBlog\src\components\chat-bot.tsx`
+
+推荐接入顺序：
+
+1. 先接 `POST /api/v1/chat`
+2. 再接 `POST /api/v1/chat/stream`
+3. 最后补 `session_id` 持久化和会话恢复
+
+详细说明见：
+
+- `docs/integration/geminiblog-chatbot.md`
+
+## 旧 Demo 与实验文件
+
+仓库里仍保留了一部分旧的 CLI / 实验文件，例如：
+
+- `main.py`
+- `multi_functional_chain.py`
+- `rag_graph.py`
+- `eval_rag.py`
+
+这些文件当前主要用于历史参考、评估或迁移过渡，不再是对外 FastAPI 后端的主入口。

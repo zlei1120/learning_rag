@@ -116,7 +116,21 @@ uv sync
 
 如果后续项目仍保留 `pyproject.toml` 驱动，这将是默认安装方式。
 
-## 五、启动服务
+## 五、执行数据库迁移
+
+建议先执行正式迁移，而不是只依赖运行时自动建表：
+
+```powershell
+uv run alembic upgrade head
+```
+
+如果当前只是想先核对会生成什么 SQL，可执行：
+
+```powershell
+uv run alembic upgrade head --sql
+```
+
+## 六、启动服务
 
 预期启动命令：
 
@@ -136,7 +150,19 @@ http://127.0.0.1:8000
 Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health
 ```
 
-## 六、同步文章
+## 七、同步文章
+
+### 0. 运维脚本入口
+
+除了 HTTP 接口，你也可以直接用仓库内脚本触发同步：
+
+```powershell
+uv run python scripts/sync_single_post.py --slug hello-nextjs
+```
+
+```powershell
+uv run python scripts/sync_all_posts.py --scope all
+```
 
 ### 1. 单篇同步
 
@@ -182,7 +208,13 @@ Invoke-RestMethod `
   -Uri http://127.0.0.1:8000/api/v1/ingest/jobs/{job_id}
 ```
 
-## 七、验证单轮问答
+当前阶段说明：
+
+- 接口状态码虽然是 `202`
+- 但同步主流程当前仍在请求内执行
+- 所以返回体中的 `status` 可能已经是 `succeeded`
+
+## 八、验证单轮问答
 
 预期接口：
 
@@ -204,7 +236,20 @@ Invoke-RestMethod `
 - `sources`
 - `related_images`
 
-## 八、验证多轮会话
+## 九、验证流式问答
+
+当前流式接口：
+
+- `POST /api/v1/chat/stream`
+
+注意事项：
+
+- 返回类型是 `text/event-stream`
+- 但请求方法是 `POST`
+- 浏览器端不能直接用 `EventSource`
+- 需要用 `fetch + ReadableStream` 自行解析 SSE 文本
+
+## 十、验证多轮会话
 
 ### 第一轮
 
@@ -237,7 +282,7 @@ Invoke-RestMethod `
 - 第二轮能结合第一轮上下文理解“第二步”
 - 如果换一个新的 `session_id`，则不应继承旧上下文
 
-## 九、查看会话状态
+## 十一、查看会话状态
 
 预期接口：
 
@@ -273,7 +318,7 @@ Invoke-RestMethod `
 - 当前会直接复用现有会话上下文继续回答
 - `LangGraph` 检查点当前使用进程内保存器，业务会话与消息历史仍持久化到 PostgreSQL
 
-## 十、上下文预算调试
+## 十二、上下文预算调试
 
 本项目的一个核心点是：不能让检索文本、OCR 文本和历史消息无限膨胀。
 
@@ -293,7 +338,7 @@ Invoke-RestMethod `
 - 多轮对话是否还能保持连续性
 - 延迟和成本是否明显失控
 
-## 十一、和 `geminiBlog` 联调
+## 十三、和 `geminiBlog` 联调
 
 前端接入点：
 
@@ -307,7 +352,11 @@ Invoke-RestMethod `
 - 展示相关图片
 - 处理超时、失败和限流状态
 
-## 十二、排错建议
+更细的接入说明见：
+
+- `docs/integration/geminiblog-chatbot.md`
+
+## 十四、排错建议
 
 ### 1. 没有召回到文章内容
 
@@ -343,7 +392,7 @@ Invoke-RestMethod `
 - `CHAT_HISTORY_MESSAGE_LIMIT`
 - `CHAT_SUMMARY_MAX_CHARS`
 
-## 十三、当前阶段的重要说明
+## 十五、当前阶段的重要说明
 
 本期快速开始遵循以下明确约束：
 
