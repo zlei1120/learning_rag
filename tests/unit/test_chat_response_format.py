@@ -12,7 +12,9 @@ def test_chat_response_formatter_builds_source_items():
             document_id="doc-001",
             slug="db-guide",
             title="数据库教程",
+            section_id="section-001",
             title_path="数据库教程 > 准备数据库",
+            chunk_index=0,
             content="标题路径：数据库教程 > 准备数据库\n内容：\n先打开数据库管理页面，确认 PostgreSQL 服务已经启动。",
             token_estimate=20,
             score=0.9,
@@ -49,6 +51,7 @@ def test_chat_response_formatter_builds_related_images():
             title_path="数据库教程 > 准备数据库",
             caption="数据库配置截图展示端口和账号权限检查。",
             feature_summary="图片文字摘要：5432",
+            token_estimate=8,
             score=0.8,
         )
     ]

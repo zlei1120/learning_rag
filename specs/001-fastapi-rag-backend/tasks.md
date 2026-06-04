@@ -88,18 +88,18 @@
 ### 测试
 
 - [x] T028 [P] [US2] 为 `POST /api/v1/chat` 编写合同测试：`tests/contract/test_chat_api.py`
-- [ ] T029 [P] [US2] 为图文召回问答编写集成测试：`tests/integration/test_chat_single_turn.py`
-- [ ] T030 [P] [US2] 为来源和图片返回结构编写单元测试：`tests/unit/test_chat_response_format.py`
+- [x] T029 [P] [US2] 为图文召回问答编写集成测试：`tests/integration/test_chat_single_turn.py`
+- [x] T030 [P] [US2] 为来源和图片返回结构编写单元测试：`tests/unit/test_chat_response_format.py`
 
 ### 实现
 
-- [ ] T031 [US2] 新建 `app/services/retrieval_service.py`，负责文本与图片文本特征召回
-- [ ] T032 [US2] 新建 `app/services/rerank_service.py`，封装百炼 `qwen3-rerank`
-- [ ] T033 [US2] 新建 `app/services/answer_service.py`，负责最终回答生成
-- [ ] T034 [US2] 将现有检索、重排、父子 chunk 扩展能力迁移并整合到新服务层
-- [ ] T035 [US2] 在 `LangGraph` 中实现最小问答图：检索 -> 图片文本召回 -> 重排 -> 上下文裁剪 -> 生成
-- [ ] T036 [US2] 实现 `POST /api/v1/chat` 到 `app/api/routes/chat.py`
-- [ ] T037 [US2] 实现来源、图片、预算调试信息的响应序列化
+- [x] T031 [US2] 新建 `app/services/retrieval_service.py`，负责文本与图片文本特征召回
+- [x] T032 [US2] 新建 `app/services/rerank_service.py`，封装百炼 `qwen3-rerank`
+- [x] T033 [US2] 新建 `app/services/answer_service.py`，负责最终回答生成
+- [x] T034 [US2] 将现有检索、重排、父子 chunk 扩展能力迁移并整合到新服务层
+- [x] T035 [US2] 在 `LangGraph` 中实现最小问答图：检索 -> 图片文本召回 -> 重排 -> 上下文裁剪 -> 生成
+- [x] T036 [US2] 实现 `POST /api/v1/chat` 到 `app/api/routes/chat.py`
+- [x] T037 [US2] 实现来源、图片、预算调试信息的响应序列化
 
 **检查点**：此时博客端已可拿到单轮真实回答。
 

@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     chat_retrieval_top_k: int = Field(default=8, alias="CHAT_RETRIEVAL_TOP_K")
     chat_image_top_k: int = Field(default=3, alias="CHAT_IMAGE_TOP_K")
     chat_enable_parent_chunk_expansion: bool = Field(default=True, alias="CHAT_ENABLE_PARENT_CHUNK_EXPANSION")
+    chat_parent_chunk_window_size: int = Field(default=2, alias="CHAT_PARENT_CHUNK_WINDOW_SIZE")
     ingest_chunk_size: int = Field(default=900, alias="INGEST_CHUNK_SIZE")
     ingest_chunk_overlap: int = Field(default=120, alias="INGEST_CHUNK_OVERLAP")
     ingest_image_context_window: int = Field(default=220, alias="INGEST_IMAGE_CONTEXT_WINDOW")

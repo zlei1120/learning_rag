@@ -10,7 +10,7 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.common import UsageInfo
 from app.services.answer_service import AnswerResult, AnswerService
 from app.services.chat_response_formatter import build_related_images, build_source_items
-from app.services.context_budget_service import build_default_context_budget
+from app.services.context_budget_service import build_default_context_budget, trim_context_by_budget
 from app.services.rerank_service import RerankService
 from app.services.retrieval_service import RetrievalResult, RetrievalService, RetrievedChunk, RetrievedImage
 
@@ -59,14 +59,18 @@ class ChatService:
         )
 
     def _build_graph(self):
-        """构建最小问答图：召回 -> 重排 -> 生成。"""
+        """构建最小问答图：召回 -> 重排 -> 父子扩展 -> 裁剪 -> 生成。"""
         workflow = StateGraph(ChatGraphState)
         workflow.add_node("retrieve", self._retrieve_node)
         workflow.add_node("rerank", self._rerank_node)
+        workflow.add_node("expand_context", self._expand_context_node)
+        workflow.add_node("trim_context", self._trim_context_node)
         workflow.add_node("generate", self._generate_node)
         workflow.add_edge(START, "retrieve")
         workflow.add_edge("retrieve", "rerank")
-        workflow.add_edge("rerank", "generate")
+        workflow.add_edge("rerank", "expand_context")
+        workflow.add_edge("expand_context", "trim_context")
+        workflow.add_edge("trim_context", "generate")
         workflow.add_edge("generate", END)
         return workflow.compile()
 
@@ -90,6 +94,27 @@ class ChatService:
         return {
             **state,
             "chunks": chunks,
+        }
+
+    def _expand_context_node(self, state: ChatGraphState) -> ChatGraphState:
+        """围绕命中 chunk 补充前后窗口，给教程类内容更多上下文。"""
+        chunks = self.retrieval_service.expand_parent_chunks(state.get("chunks", []))
+        return {
+            **state,
+            "chunks": chunks,
+        }
+
+    def _trim_context_node(self, state: ChatGraphState) -> ChatGraphState:
+        """按上下文预算裁剪最终进入生成阶段的文本和图片。"""
+        budgeted_context = trim_context_by_budget(
+            settings=self.settings,
+            chunks=state.get("chunks", []),
+            images=state.get("images", []),
+        )
+        return {
+            **state,
+            "chunks": budgeted_context.chunks,
+            "images": budgeted_context.images,
         }
 
     def _generate_node(self, state: ChatGraphState) -> ChatGraphState:

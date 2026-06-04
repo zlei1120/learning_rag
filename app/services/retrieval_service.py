@@ -22,7 +22,9 @@ class RetrievedChunk:
     document_id: str
     slug: str
     title: str
+    section_id: str | None
     title_path: str | None
+    chunk_index: int
     content: str
     token_estimate: int | None
     score: float
@@ -41,6 +43,7 @@ class RetrievedImage:
     title_path: str | None
     caption: str | None
     feature_summary: str | None
+    token_estimate: int | None
     score: float
 
 
@@ -70,6 +73,23 @@ class RetrievalService:
         chunks = self.retrieve_text_chunks(query, top_k=self.settings.chat_retrieval_top_k)
         images = self.retrieve_image_features(query, top_k=self.settings.chat_image_top_k)
         return RetrievalResult(chunks=chunks, images=images)
+
+    def expand_parent_chunks(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+        """围绕命中的 chunk 扩展前后窗口，补一点父级上下文。"""
+        if not chunks or not self.settings.chat_enable_parent_chunk_expansion:
+            return chunks
+
+        expanded_chunks: list[RetrievedChunk] = []
+        seen_chunk_ids: set[str] = set()
+
+        for chunk in chunks:
+            for candidate in self._load_neighbor_chunks(chunk):
+                if candidate.chunk_id in seen_chunk_ids:
+                    continue
+                seen_chunk_ids.add(candidate.chunk_id)
+                expanded_chunks.append(candidate)
+
+        return expanded_chunks or chunks
 
     def retrieve_text_chunks(self, query: str, *, top_k: int) -> list[RetrievedChunk]:
         """优先用向量召回文本块，失败时回退到关键词召回。"""
@@ -146,6 +166,27 @@ class RetrievalService:
             for chunk, document in rows
         ]
 
+    def _load_neighbor_chunks(self, chunk: RetrievedChunk) -> list[RetrievedChunk]:
+        """按窗口加载命中 chunk 的前后邻居。"""
+        window_size = self.settings.chat_parent_chunk_window_size
+        statement = (
+            select(RagChunk, RagDocument)
+            .join(RagDocument, RagChunk.document_id == RagDocument.id)
+            .where(RagChunk.document_id == chunk.document_id)
+            .where(RagChunk.chunk_index >= max(0, chunk.chunk_index - window_size))
+            .where(RagChunk.chunk_index <= chunk.chunk_index + window_size)
+            .order_by(RagChunk.chunk_index.asc())
+        )
+
+        if chunk.section_id:
+            statement = statement.where(RagChunk.section_id == chunk.section_id)
+
+        rows = self.session.execute(statement).all()
+        return [
+            self._build_retrieved_chunk(neighbor_chunk, document, score=chunk.score)
+            for neighbor_chunk, document in rows
+        ]
+
     @staticmethod
     def _build_retrieved_chunk(chunk: RagChunk, document: RagDocument, *, score: float) -> RetrievedChunk:
         """把 ORM 对象转换为问答链路内部结构。"""
@@ -154,7 +195,9 @@ class RetrievalService:
             document_id=document.id,
             slug=document.slug,
             title=document.title,
+            section_id=chunk.section_id,
             title_path=chunk.title_path,
+            chunk_index=chunk.chunk_index,
             content=chunk.content,
             token_estimate=chunk.token_estimate,
             score=score,
@@ -179,6 +222,7 @@ class RetrievalService:
             title_path=image.title_path,
             caption=feature.caption_text,
             feature_summary=feature.feature_summary,
+            token_estimate=feature.token_estimate,
             score=score,
         )
 
