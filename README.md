@@ -67,6 +67,13 @@ RERANK_BASE_URL=https://dashscope.aliyuncs.com/compatible-api/v1
 BLOG_PUBLIC_BASE_URL=https://你的博客域名
 ```
 
+如果数据库密码里包含 `@`、`:`、`/` 这类特殊字符，记得先做 URL 编码。
+
+例如：
+
+- 原密码：`password@123`
+- 连接串中写成：`password%40123`
+
 更多配置项请看：
 
 - `docs/backend/configuration.md`
@@ -86,6 +93,10 @@ uv run alembic upgrade head
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
+
+如果你使用的是 `E:\code\geminiBlog\docker-compose.yml` 的最新版本，空库首次初始化时会自动启用 `pgvector`。
+
+如果是旧的数据库 volume 或更早创建的云上实例，仍然要手动补一次上面的 `CREATE EXTENSION`。
 
 ### 4. 启动服务
 

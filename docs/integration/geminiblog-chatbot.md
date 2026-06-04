@@ -32,6 +32,29 @@
 
 - 这是“后端拆包版伪流式”，不是模型原生 token streaming
 
+## 联调前置条件
+
+在博客端联调聊天弹窗之前，先确认后端基础条件已经满足：
+
+1. `learning_rag` 已执行过数据库迁移
+2. 共享的 PostgreSQL 已启用 `pgvector`
+3. 文章已经至少完成过一次全量同步
+
+常用命令：
+
+```powershell
+uv run alembic upgrade head
+uv run python scripts/sync_all_posts.py --scope all
+```
+
+如果你共用的是 `E:\code\geminiBlog\docker-compose.yml` 里的数据库，新版 compose 已改为 `pgvector/pgvector:pg16`。
+
+但如果那套数据库是旧 volume 或历史实例，仍然要先在库里补执行：
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
 ## 推荐接入顺序
 
 1. 已完成：普通问答 `POST /api/v1/chat`

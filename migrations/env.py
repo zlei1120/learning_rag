@@ -21,7 +21,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Alembic 会把 `%` 当作配置插值标记，数据库密码里如果包含 URL 编码后的 `%40`
+# 这类内容，需要先转义成 `%%`，否则迁移命令会在解析连接串阶段失败。
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

@@ -59,7 +59,31 @@ Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-如果没开 `pgvector`，向量相关查询会退回关键词兜底，但正式效果会明显下降。
+如果报错类似：
+
+- `type "vector" does not exist`
+- `extension "vector" is not available`
+
+说明当前 PostgreSQL 实例没有安装 `pgvector`。
+
+你这个项目当前还有一个很关键的上下文：
+
+- `E:\code\geminiBlog\docker-compose.yml` 新版本已经切到 `pgvector/pgvector:pg16`
+
+这意味着：
+
+- 新起的空库可以直接带上 `pgvector`
+- 但旧的云上实例、旧的 Docker volume，或者历史上用 `postgres:16` 起过的库，并不会因为你改了 compose 就自动补上扩展
+- FastAPI 问答后端即使连上同一个博客库，也会因为缺少 `vector` 类型而无法完成 RAG 表初始化
+
+可选处理方式：
+
+1. 把数据库实例改成带 `pgvector` 的镜像或发行版
+2. 如果是 Docker 自建库，进入库里手动执行 `CREATE EXTENSION IF NOT EXISTS vector;`
+3. 如果是系统级 PostgreSQL，再为现有实例手动安装 `pgvector`
+4. 改为使用一个已经支持 `pgvector` 的托管 PostgreSQL 实例
+
+如果没开 `pgvector`，向量相关查询会退回关键词兜底，但正式效果会明显下降；而首次初始化 `rag` 相关表时也可能直接失败。
 
 ### 5. 检查 RAG schema
 
@@ -88,6 +112,7 @@ uv run alembic upgrade head --sql
 - 数据库连接成功，但没有权限创建 schema
 - 旧库里缺少会话表迁移
 - 本地 `.env` 和实际执行 Alembic 的环境变量不一致
+- `DATABASE_URL` 中的密码包含 `@` 等特殊字符，URL 编码后出现 `%40`，如果你在历史脚本或自定义 Alembic 配置里没做转义，仍可能直接报插值错误
 
 ## 四、能读取文章但同步失败
 

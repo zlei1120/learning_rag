@@ -38,6 +38,12 @@
 - 默认值：`postgresql+psycopg://blog:blog_password@127.0.0.1:5432/blog`
 - 用途：连接 `geminiBlog` 所在 PostgreSQL
 
+注意：
+
+- 如果密码里有 `@`、`:`、`/` 这类特殊字符，必须先做 URL 编码
+- 例如 `password@123` 要写成 `password%40123`
+- 你当前这类“本地通过 SSH 隧道连云上博客库”的场景，常见写法就是 `127.0.0.1:5433`
+
 ### `RAG_SCHEMA`
 
 - 默认值：`rag`
@@ -47,6 +53,7 @@
 
 - 博客业务表和 RAG 表继续共用一个 PostgreSQL 实例
 - 但用独立 schema 隔离 RAG 索引
+- 如果博客库来自 `E:\code\geminiBlog\docker-compose.yml`，要确认该库已经启用了 `pgvector`
 
 ## 三、百炼与模型配置
 
