@@ -27,6 +27,7 @@
 
 - `docs/backend/architecture.md`
 - `docs/backend/configuration.md`
+- `docs/backend/context-budget.md`
 - `docs/backend/data-flow.md`
 
 ### 排错
@@ -69,6 +70,10 @@ BLOG_PUBLIC_BASE_URL=https://你的博客域名
 更多配置项请看：
 
 - `docs/backend/configuration.md`
+
+上下文预算默认值与调优建议请看：
+
+- `docs/backend/context-budget.md`
 
 ### 3. 初始化数据库
 

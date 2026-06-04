@@ -232,6 +232,7 @@ flowchart TD
 当前配置项位于：
 
 - `app/core/config.py`
+- `docs/backend/context-budget.md`
 
 核心预算：
 

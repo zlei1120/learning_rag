@@ -134,6 +134,10 @@
 - `CHAT_CONTEXT_IMAGE_TOKENS`
 - `CHAT_CONTEXT_RESERVED_OUTPUT_TOKENS`
 
+上下文预算默认值和调优建议另见：
+
+- `docs/backend/context-budget.md`
+
 ### 调参建议
 
 - 如果教程截图问题经常答不上来，先看 `CHAT_CONTEXT_IMAGE_TOKENS`

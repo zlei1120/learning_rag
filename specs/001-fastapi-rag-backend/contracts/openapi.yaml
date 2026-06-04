@@ -476,4 +476,4 @@ components:
         details:
           type: object
           additionalProperties: true
-          description: 可选的调试或限流细节，例如字段级校验错误、`retry_after_seconds` 等。
+          description: 可选的调试、限流或链路细节，例如字段级校验错误、`retry_after_seconds`、`request_id` 等。

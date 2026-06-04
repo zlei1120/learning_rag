@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     async def request_logging_middleware(request: Request, call_next):
         request_id = request.headers.get("x-request-id") or uuid4().hex
         start_time = perf_counter()
+        request.state.request_id = request_id
 
         with logger.contextualize(
             request_id=request_id,
