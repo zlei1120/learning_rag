@@ -232,13 +232,14 @@
 
 - 文本 embedding：`text-embedding-v4`
 - reranker：`qwen3-rerank`
-- OCR：`qwen-vl-ocr`
-- 图片说明：`qwen3.6-flash`
+- OCR：`qwen-vl-ocr-latest`
+- 图片说明：`qwen-vl-plus`
 - 复杂图像兜底：`qwen3.6-plus`
 
 注意事项：
 
-- 模型名与接口形态在实现前仍需再次确认
+- 当前实现通过百炼 OpenAI 兼容接口调用，默认地址为 `https://dashscope.aliyuncs.com/compatible-mode/v1`
+- 博客中的 `/uploads/...` 图片地址需要通过 `BLOG_PUBLIC_BASE_URL` 拼成可访问地址后再进入 OCR / caption
 - OCR 与 caption 需区分调用场景，不要把所有图都走重模型
 
 ## 未决问题

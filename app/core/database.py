@@ -5,6 +5,7 @@ from functools import lru_cache
 
 from sqlalchemy import MetaData, create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.schema import CreateSchema
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
@@ -46,6 +47,18 @@ def check_database_health() -> str:
         return "ok"
     except Exception:
         return "unavailable"
+
+
+def ensure_rag_storage_ready() -> None:
+    """确保 RAG 所需 schema 和表结构在目标数据库中存在。"""
+    import app.models  # noqa: F401
+
+    engine = get_engine()
+    schema_name = Base.metadata.schema
+    with engine.begin() as conn:
+        if schema_name:
+            conn.execute(CreateSchema(schema_name, if_not_exists=True))
+        Base.metadata.create_all(bind=conn)
 
 
 def reset_database_cache() -> None:

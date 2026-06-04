@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, model_validator
 
 
@@ -20,7 +23,7 @@ class IngestPostRequest(BaseModel):
 class IngestRebuildRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    scope: str
+    scope: Literal["all", "embeddings_only", "image_features_only"]
     force: bool = False
 
 
@@ -31,6 +34,6 @@ class IngestJobResponse(BaseModel):
     job_type: str
     status: str
     target_slug: str | None = None
-    started_at: str | None = None
-    finished_at: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     error_message: str | None = None

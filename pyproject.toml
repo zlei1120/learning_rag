@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+   "alembic>=1.16.5",
    "ddgs>=9.14.4",
    "docx2txt>=0.9",
    "fastapi>=0.118.0",
@@ -17,6 +18,7 @@ dependencies = [
    "load-dotenv>=0.1.0",
    "loguru>=0.7.3",
    "markdown>=3.10.2",
+   "openai>=2.29.0",
    "pgvector>=0.4.1",
    "psycopg[binary]>=3.2.10",
    "pydantic-settings>=2.10.1",

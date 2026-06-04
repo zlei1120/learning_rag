@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
     app_name: str = "learning-rag-api"
@@ -29,12 +30,20 @@ class Settings(BaseSettings):
     rag_schema: str = Field(default="rag", alias="RAG_SCHEMA")
 
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
-    openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
+    openai_base_url: str | None = Field(
+        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        alias="OPENAI_BASE_URL",
+    )
+    rerank_base_url: str = Field(
+        default="https://dashscope.aliyuncs.com/compatible-api/v1",
+        alias="RERANK_BASE_URL",
+    )
+    blog_public_base_url: str | None = Field(default=None, alias="BLOG_PUBLIC_BASE_URL")
     chat_model: str = Field(default="qwen3.6-plus", alias="CHAT_MODEL")
     embedding_model: str = Field(default="text-embedding-v4", alias="EMBEDDING_MODEL")
     rerank_model: str = Field(default="qwen3-rerank", alias="RERANK_MODEL")
-    ocr_model: str = Field(default="qwen-vl-ocr", alias="OCR_MODEL")
-    image_caption_model: str = Field(default="qwen3.6-flash", alias="IMAGE_CAPTION_MODEL")
+    ocr_model: str = Field(default="qwen-vl-ocr-latest", alias="OCR_MODEL")
+    image_caption_model: str = Field(default="qwen-vl-plus", alias="IMAGE_CAPTION_MODEL")
 
     chat_context_max_tokens: int = Field(default=24000, alias="CHAT_CONTEXT_MAX_TOKENS")
     chat_context_recent_messages_tokens: int = Field(default=3000, alias="CHAT_CONTEXT_RECENT_MESSAGES_TOKENS")
@@ -46,6 +55,13 @@ class Settings(BaseSettings):
     chat_retrieval_top_k: int = Field(default=8, alias="CHAT_RETRIEVAL_TOP_K")
     chat_image_top_k: int = Field(default=3, alias="CHAT_IMAGE_TOP_K")
     chat_enable_parent_chunk_expansion: bool = Field(default=True, alias="CHAT_ENABLE_PARENT_CHUNK_EXPANSION")
+    ingest_chunk_size: int = Field(default=900, alias="INGEST_CHUNK_SIZE")
+    ingest_chunk_overlap: int = Field(default=120, alias="INGEST_CHUNK_OVERLAP")
+    ingest_image_context_window: int = Field(default=220, alias="INGEST_IMAGE_CONTEXT_WINDOW")
+    embedding_batch_size: int = Field(default=16, alias="EMBEDDING_BATCH_SIZE")
+    image_fetch_timeout_seconds: int = Field(default=20, alias="IMAGE_FETCH_TIMEOUT_SECONDS")
+    image_ocr_min_pixels: int = Field(default=3072, alias="IMAGE_OCR_MIN_PIXELS")
+    image_ocr_max_pixels: int = Field(default=8388608, alias="IMAGE_OCR_MAX_PIXELS")
 
     @field_validator("debug", mode="before")
     @classmethod
@@ -60,6 +76,18 @@ class Settings(BaseSettings):
         if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
             return False
         return value
+
+    @field_validator("openai_base_url", mode="before")
+    @classmethod
+    def normalize_openai_base_url(cls, value: object) -> str:
+        """兼容空字符串配置，默认回退到百炼兼容地址。"""
+        if value is None:
+            return "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+        normalized = str(value).strip()
+        if not normalized:
+            return "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        return normalized
 
 
 @lru_cache(maxsize=1)

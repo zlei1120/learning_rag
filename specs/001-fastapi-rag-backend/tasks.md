@@ -36,10 +36,10 @@
 
 **关键说明**：这一阶段完成前，不建议开始具体业务实现。
 
-- [ ] T006 建立数据库基础模型与迁移框架，新增 `app/models/` 和 `migrations/`
+- [x] T006 建立数据库基础模型与迁移框架，新增 `app/models/` 和 `migrations/`
 - [x] T007 [P] 新建 `app/schemas/common.py`、`app/schemas/chat.py`、`app/schemas/ingest.py`
 - [x] T008 [P] 新建统一异常模型和错误处理逻辑到 `app/api/deps.py` 或等价错误处理中间件
-- [ ] T009 [P] 新建结构化日志与请求链路日志
+- [x] T009 [P] 新建结构化日志与请求链路日志
 - [x] T010 建立 `LangGraph` 运行时封装入口到 `app/services/orchestration_service.py`
 - [x] T011 建立上下文预算配置模型和预算控制服务到 `app/services/context_budget_service.py`
 - [x] T012 建立会话隔离基础约定：`session_id` 生成、读取、校验规则
@@ -56,24 +56,24 @@
 
 ### 测试
 
-- [ ] T013 [P] [US1] 为同步接口编写合同测试：`tests/contract/test_ingest_api.py`
-- [ ] T014 [P] [US1] 为单篇文章同步编写集成测试：`tests/integration/test_ingest_single_post.py`
-- [ ] T015 [P] [US1] 为 Markdown 标题切分与图片提取编写单元测试：`tests/unit/test_markdown_ingest.py`
+- [x] T013 [P] [US1] 为同步接口编写合同测试：`tests/contract/test_ingest_api.py`
+- [x] T014 [P] [US1] 为单篇文章同步编写集成测试：`tests/integration/test_ingest_single_post.py`
+- [x] T015 [P] [US1] 为 Markdown 标题切分与图片提取编写单元测试：`tests/unit/test_markdown_ingest.py`
 
 ### 实现
 
 - [x] T016 [US1] 新建 `app/repositories/blog_post_repository.py`，从 `geminiBlog` 的 `Post` 表读取文章
 - [x] T017 [P] [US1] 新建 `app/models/rag_document.py`、`app/models/rag_chunk.py`、`app/models/rag_embedding.py`
 - [x] T018 [P] [US1] 新建 `app/models/rag_image.py`、`app/models/ingest_job.py`
-- [ ] T019 [P] [US1] 新建 `app/repositories/rag_document_repository.py`、`app/repositories/rag_chunk_repository.py`
-- [ ] T020 [P] [US1] 新建 `app/repositories/rag_image_repository.py`、`app/repositories/ingest_job_repository.py`
-- [ ] T021 [US1] 抽取并迁移 [markdown_chunker.py](d:\code\learning_rag\markdown_chunker.py) 逻辑到 `app/services/markdown_ingest_service.py`
-- [ ] T022 [US1] 新建 `app/services/blog_source_service.py`，负责把 `Post` 转为内部 `Document`
-- [ ] T023 [US1] 新建 `app/services/embedding_service.py`，封装百炼 `text-embedding-v4`
-- [ ] T024 [US1] 新建 `app/services/image_understanding_service.py`，封装 OCR 和图片说明生成
-- [ ] T025 [US1] 新建 `app/services/ingest_service.py`，串起单篇同步和全量重建流程
-- [ ] T026 [US1] 实现 `POST /api/v1/ingest/post` 和 `POST /api/v1/ingest/rebuild` 到 `app/api/routes/ingest.py`
-- [ ] T027 [US1] 实现 `GET /api/v1/ingest/jobs/{job_id}` 到 `app/api/routes/ingest.py`
+- [x] T019 [P] [US1] 新建 `app/repositories/rag_document_repository.py`、`app/repositories/rag_chunk_repository.py`
+- [x] T020 [P] [US1] 新建 `app/repositories/rag_image_repository.py`、`app/repositories/ingest_job_repository.py`
+- [x] T021 [US1] 抽取并迁移 [markdown_chunker.py](d:\code\learning_rag\markdown_chunker.py) 逻辑到 `app/services/markdown_ingest_service.py`
+- [x] T022 [US1] 新建 `app/services/blog_source_service.py`，负责把 `Post` 转为内部 `Document`
+- [x] T023 [US1] 新建 `app/services/embedding_service.py`，封装百炼 `text-embedding-v4`
+- [x] T024 [US1] 新建 `app/services/image_understanding_service.py`，封装 OCR 和图片说明生成
+- [x] T025 [US1] 新建 `app/services/ingest_service.py`，串起单篇同步和全量重建流程
+- [x] T026 [US1] 实现 `POST /api/v1/ingest/post` 和 `POST /api/v1/ingest/rebuild` 到 `app/api/routes/ingest.py`
+- [x] T027 [US1] 实现 `GET /api/v1/ingest/jobs/{job_id}` 到 `app/api/routes/ingest.py`
 
 **检查点**：此时应能不依赖聊天接口，独立完成文章索引构建。
 

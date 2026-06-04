@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.api.deps import AppError
-from app.core.config import get_settings
+from app.core.database import get_db_session
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -11,26 +12,24 @@ from app.schemas.chat import (
     ChatSessionResponse,
 )
 from app.schemas.common import UsageInfo
-from app.services.context_budget_service import build_default_context_budget
+from app.services.chat_service import ChatService
 from app.services.session_service import generate_session_id, validate_session_id
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
 
-@router.post("", response_model=ChatResponse)
-async def post_chat(request: ChatRequest) -> ChatResponse:
-    session_id = request.session_id or generate_session_id()
-    context_budget = build_default_context_budget(get_settings()) if request.debug_context else None
+def get_chat_service(session: Session = Depends(get_db_session)) -> ChatService:
+    """为问答接口提供服务实例。"""
+    return ChatService(session)
 
-    return ChatResponse(
-        session_id=session_id,
-        answer="聊天主链路尚未实现，当前为骨架返回。",
-        status="completed",
-        sources=[],
-        related_images=[],
-        context_budget=context_budget,
-        usage=UsageInfo(),
-    )
+
+@router.post("", response_model=ChatResponse)
+async def post_chat(
+    request: ChatRequest,
+    chat_service: ChatService = Depends(get_chat_service),
+) -> ChatResponse:
+    session_id = request.session_id or generate_session_id()
+    return chat_service.answer(request=request, session_id=session_id)
 
 
 @router.post("/stream")

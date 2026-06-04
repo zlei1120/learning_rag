@@ -70,12 +70,13 @@ DATABASE_URL=postgresql+psycopg://blog:blog_password@127.0.0.1:5432/blog
 
 OPENAI_API_KEY=你的百炼Key
 OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+BLOG_PUBLIC_BASE_URL=https://你的博客域名
 
 CHAT_MODEL=qwen3.6-plus
 EMBEDDING_MODEL=text-embedding-v4
 RERANK_MODEL=qwen3-rerank
-OCR_MODEL=qwen-vl-ocr
-IMAGE_CAPTION_MODEL=qwen3.6-flash
+OCR_MODEL=qwen-vl-ocr-latest
+IMAGE_CAPTION_MODEL=qwen-vl-plus
 
 CHAT_CONTEXT_MAX_TOKENS=24000
 CHAT_CONTEXT_RECENT_MESSAGES_TOKENS=3000
@@ -87,11 +88,16 @@ CHAT_CONTEXT_RESERVED_OUTPUT_TOKENS=3000
 CHAT_RETRIEVAL_TOP_K=8
 CHAT_IMAGE_TOP_K=3
 CHAT_ENABLE_PARENT_CHUNK_EXPANSION=true
+
+IMAGE_FETCH_TIMEOUT_SECONDS=20
+IMAGE_OCR_MIN_PIXELS=3072
+IMAGE_OCR_MAX_PIXELS=8388608
 ```
 
 说明：
 
-- 模型名后续以实现阶段最终落地为准
+- `OPENAI_BASE_URL` 未配置或为空时，后端默认使用百炼 OpenAI 兼容地址
+- `BLOG_PUBLIC_BASE_URL` 用于把 `/uploads/...` 这类博客图片相对路径拼成可访问地址
 - 上下文预算参数是本期的关键调优项
 
 ## 四、安装依赖
