@@ -2,24 +2,35 @@
 
 ## 目标文件
 
-当前前端替换入口：
+当前博客侧相关文件：
 
 - `E:\code\geminiBlog\src\components\chat-bot.tsx`
+- `E:\code\geminiBlog\src\lib\chat-api.ts`
+- `E:\code\geminiBlog\src\app\api\chat\route.ts`
 
-这个组件现在还是纯 Mock：
+## 当前落地状态
 
-- 本地 `messages`
-- `setTimeout` 模拟请求
-- `setInterval` 模拟打字机输出
+当前博客弹窗已经接上普通问答链路：
 
-建议先保留现有 UI，只替换数据层和流式处理逻辑。
+- 不再使用本地 Mock 问答
+- 浏览器请求先走博客自己的 `/api/chat`
+- 再由 Next.js route handler 代理到 FastAPI `POST /api/v1/chat`
+- `session_id` 已通过 `sessionStorage` 持久化
+- AI 消息已支持展示 `sources` 和 `relatedImages`
+- 顶部“新对话”按钮会清空本地会话并重新开始
+
+当前仍未接入：
+
+- `POST /api/v1/chat/stream`
+- SSE 增量事件消费
+- 真正的流式打字机输出
 
 ## 推荐接入顺序
 
-1. 先把 Mock 请求改成 `POST /api/v1/chat`
-2. 跑通真实问答、来源和图片展示
-3. 再把提交逻辑升级成 `POST /api/v1/chat/stream`
-4. 最后补 `session_id` 持久化和会话恢复
+1. 已完成：普通问答 `POST /api/v1/chat`
+2. 已完成：来源和图片展示
+3. 下一步：升级到 `POST /api/v1/chat/stream`
+4. 后续可补：更细的会话恢复体验和调试面板
 
 ## 一、先改消息结构
 
@@ -74,17 +85,13 @@ type Message = {
 - 能按标签页隔离匿名访客会话
 - 不容易出现多个页面串用同一上下文
 
-## 三、普通模式接入：先替换当前 Mock
+## 三、普通模式接入：当前已落地
 
-### 最小替换点
+### 当前实现思路
 
-当前 `handleSubmit` 里这段逻辑：
-
-- `setTimeout(...)`
-- 随机取 `MOCK_ANSWERS`
-- `setInterval(...)` 逐字输出
-
-可以先整体替换为一次真实 `fetch`。
+- 浏览器只请求博客自己的 `/api/chat`
+- 博客服务端再代理到 FastAPI，避免浏览器跨域问题
+- 聊天组件内部统一通过 `src/lib/chat-api.ts` 发请求
 
 ### 推荐抽一个 API 帮助函数
 
@@ -119,7 +126,7 @@ export type ChatResponse = {
 };
 
 export async function requestChat(payload: ChatRequest): Promise<ChatResponse> {
-  const response = await fetch("http://127.0.0.1:8000/api/v1/chat", {
+  const response = await fetch("/api/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -135,6 +142,20 @@ export async function requestChat(payload: ChatRequest): Promise<ChatResponse> {
   return response.json();
 }
 ```
+
+### 代理层说明
+
+博客侧代理文件：
+
+- `E:\code\geminiBlog\src\app\api\chat\route.ts`
+
+它会把请求转发到：
+
+- `${RAG_BACKEND_URL}/api/v1/chat`
+
+如果没有显式配置 `RAG_BACKEND_URL`，当前默认走：
+
+- `http://127.0.0.1:8000`
 
 ### `chat-bot.tsx` 中的替换思路
 
@@ -167,6 +188,16 @@ window.sessionStorage.setItem(sessionKey, result.session_id);
   relatedImages: result.related_images,
 }
 ```
+
+当前实际组件里，还额外补了两点：
+
+1. 如果本地保存的 `session_id` 失效并返回 `404`
+   会先清掉旧 `session_id`，再自动重试一次首轮问答
+
+2. 顶部“新对话”按钮会：
+   - 清空 `sessionStorage`
+   - 重置欢迎消息
+   - 重新开始一轮新会话
 
 ## 四、流式模式接入：替换打字机体验
 
