@@ -119,3 +119,21 @@ def test_image_understanding_normalizes_structured_model_text():
     normalized = ImageUnderstandingService._normalize_model_text(content)
 
     assert normalized == "第一段\n第二段\n第三段"
+
+
+def test_image_understanding_cleans_ocr_coordinate_prefixes():
+    """OCR 原文里的坐标前缀应被清洗掉，避免污染召回文本。"""
+    raw_text = "\n123,88,61,136,90,LangSmith\n123,88,61,136,90,LangSmith\n171,88,260,136,Docs\n"
+
+    cleaned = ImageUnderstandingService._clean_ocr_text(raw_text)
+
+    assert cleaned == "LangSmith\nDocs"
+
+
+def test_image_understanding_keeps_regular_text_when_not_coordinate_noise():
+    """正常文本不应被误清洗。"""
+    raw_text = "发布时间：2026-06-04\n功能,状态,说明"
+
+    cleaned = ImageUnderstandingService._clean_ocr_text(raw_text)
+
+    assert cleaned == raw_text

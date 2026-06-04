@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import mimetypes
+import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from urllib.parse import urljoin, urlparse
@@ -15,6 +16,9 @@ try:
     from openai import OpenAI
 except ImportError:  # pragma: no cover
     OpenAI = None  # type: ignore[assignment]
+
+
+OCR_NUMERIC_TOKEN_PATTERN = re.compile(r"^-?\d+(?:\.\d+)?$")
 
 
 @dataclass(slots=True)
@@ -145,7 +149,8 @@ class ImageUnderstandingService:
                 }
             ],
         )
-        return self._normalize_model_text(completion.choices[0].message.content)
+        raw_text = self._normalize_model_text(completion.choices[0].message.content)
+        return self._clean_ocr_text(raw_text)
 
     def _generate_caption(self, resolved_input: ResolvedImageInput) -> str | None:
         """调用百炼视觉模型生成面向教程场景的图片说明。"""
@@ -270,6 +275,58 @@ class ImageUnderstandingService:
             error_message=reason,
             token_estimate=max(1, len((context_summary or "") + feature_summary) // 4),
         )
+
+    @classmethod
+    def _clean_ocr_text(cls, text: str | None) -> str | None:
+        """清洗 OCR 原文中的坐标前缀、空行和重复噪声。"""
+        if text is None:
+            return None
+
+        cleaned_lines: list[str] = []
+        for raw_line in text.replace("\r\n", "\n").split("\n"):
+            stripped_line = cls._strip_ocr_coordinate_prefix(raw_line.strip())
+            if not stripped_line:
+                continue
+
+            normalized_line = " ".join(stripped_line.split())
+            if not normalized_line:
+                continue
+            if cleaned_lines and cleaned_lines[-1] == normalized_line:
+                continue
+            cleaned_lines.append(normalized_line)
+
+        combined = "\n".join(cleaned_lines).strip()
+        return combined or None
+
+    @classmethod
+    def _strip_ocr_coordinate_prefix(cls, line: str) -> str:
+        """去掉百炼 OCR 偶发返回的坐标前缀。"""
+        if not line:
+            return ""
+
+        segments = [segment.strip() for segment in line.replace("，", ",").split(",")]
+        numeric_prefix_count = 0
+        numeric_digit_count = 0
+        for segment in segments:
+            if not cls._is_numeric_token(segment):
+                break
+            numeric_prefix_count += 1
+            numeric_digit_count += sum(1 for character in segment if character.isdigit())
+
+        if numeric_prefix_count < 4:
+            return line
+        if numeric_digit_count < 8:
+            return line
+        if numeric_prefix_count >= len(segments):
+            return line
+
+        content = ",".join(segments[numeric_prefix_count:]).strip(" ,")
+        return content or line
+
+    @staticmethod
+    def _is_numeric_token(value: str) -> bool:
+        """判断分段是否为 OCR 坐标数字。"""
+        return bool(OCR_NUMERIC_TOKEN_PATTERN.fullmatch(value))
 
     @staticmethod
     def _truncate_text(text: str | None, max_length: int) -> str | None:
