@@ -80,17 +80,46 @@ paths:
               schema:
                 type: string
                 description: |
-                  事件流格式建议包含：
+                  当前事件流包含：
                   - `message.delta`
                   - `message.completed`
                   - `source`
                   - `related_image`
-                  - `resume_required`
-                  - `error`
+                  - `context_budget`
+                  - `usage`
+              examples:
+                delta:
+                  summary: 增量回答事件
+                  value: |
+                    event: message.delta
+                    data: {"session_id":"sess_1234567890abcdef1234567890abcdef","delta":"这里的端口","accumulated":"这里的端口"}
+                completed:
+                  summary: 完成事件
+                  value: |
+                    event: message.completed
+                    data: {"session_id":"sess_1234567890abcdef1234567890abcdef","answer":"这里的端口指 PostgreSQL 对外监听的 5432 端口。","status":"completed","sources":[],"related_images":[]}
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: 触发限流
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: 服务内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/chat/resume:
     post:
       tags: [chat]
-      summary: 从中断状态继续会话
+      summary: 基于既有会话继续追问
       operationId: postChatResume
       requestBody:
         required: true
@@ -105,6 +134,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: 找不到对应会话或恢复点
           content:
@@ -129,6 +164,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatSessionResponse"
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: 找不到对应会话
           content:
@@ -232,6 +273,7 @@ components:
           type: string
           description: |
             会话标识。前端已持有时必须传入；未传时后端可创建新会话并在响应中返回。
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$"
         message:
           type: string
           minLength: 1
@@ -256,6 +298,7 @@ components:
       properties:
         session_id:
           type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$"
         message:
           type: string
           minLength: 1
@@ -275,6 +318,7 @@ components:
         status:
           type: string
           enum: [completed, resume_required, refused]
+          description: 当前实现已落地 `completed`，其余枚举为后续扩展保留。
         resume_token:
           type: string
           description: 当 `status=resume_required` 时可用于恢复会话
@@ -301,6 +345,7 @@ components:
         status:
           type: string
           enum: [active, archived, expired]
+          description: 当前实现默认返回 `active`，其余状态为后续扩展保留。
         summary:
           type: string
         created_at:
@@ -431,3 +476,4 @@ components:
         details:
           type: object
           additionalProperties: true
+          description: 可选的调试或限流细节，例如字段级校验错误、`retry_after_seconds` 等。

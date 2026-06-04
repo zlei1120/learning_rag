@@ -140,16 +140,16 @@
 
 ### 测试
 
-- [ ] T049 [P] [US4] 为流式问答接口编写合同测试：`tests/contract/test_chat_stream_api.py`
-- [ ] T050 [P] [US4] 为错误结构与限流响应编写合同测试：`tests/contract/test_error_contracts.py`
+- [x] T049 [P] [US4] 为流式问答接口编写合同测试：`tests/contract/test_chat_stream_api.py`
+- [x] T050 [P] [US4] 为错误结构与限流响应编写合同测试：`tests/contract/test_error_contracts.py`
 
 ### 实现
 
-- [ ] T051 [US4] 实现 `POST /api/v1/chat/stream` 到 `app/api/routes/chat.py`
-- [ ] T052 [US4] 对齐 [contracts/openapi.yaml](d:\code\learning_rag\specs\001-fastapi-rag-backend\contracts\openapi.yaml) 与实际响应模型
-- [ ] T053 [US4] 编写正式 API 文档到 `docs/api/overview.md`、`docs/api/chat.md`、`docs/api/ingest.md`
-- [ ] T054 [US4] 编写博客端接入文档到 `docs/integration/geminiblog-chatbot.md`
-- [ ] T055 [US4] 在文档中明确 `session_id` 保存策略、来源字段和图片字段使用方式
+- [x] T051 [US4] 实现 `POST /api/v1/chat/stream` 到 `app/api/routes/chat.py`
+- [x] T052 [US4] 对齐 [contracts/openapi.yaml](d:\code\learning_rag\specs\001-fastapi-rag-backend\contracts\openapi.yaml) 与实际响应模型
+- [x] T053 [US4] 编写正式 API 文档到 `docs/api/overview.md`、`docs/api/chat.md`、`docs/api/ingest.md`
+- [x] T054 [US4] 编写博客端接入文档到 `docs/integration/geminiblog-chatbot.md`
+- [x] T055 [US4] 在文档中明确 `session_id` 保存策略、来源字段和图片字段使用方式
 
 **检查点**：此时博客端可稳定联调。
 

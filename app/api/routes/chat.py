@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import json
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import AppError
@@ -27,6 +32,64 @@ def get_session_service(session: Session = Depends(get_db_session)) -> SessionSe
     return SessionService(session)
 
 
+def _format_sse_event(*, event: str, payload: dict[str, object]) -> str:
+    """把结构化事件编码成 SSE 文本。"""
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+async def _stream_chat_response(response: ChatResponse) -> AsyncIterator[str]:
+    """把完整问答结果拆成前端可消费的 SSE 事件流。"""
+    answer = response.answer or ""
+    collected_answer = ""
+    chunk_size = 18
+
+    for index in range(0, len(answer), chunk_size):
+        delta = answer[index : index + chunk_size]
+        collected_answer += delta
+        yield _format_sse_event(
+            event="message.delta",
+            payload={
+                "session_id": response.session_id,
+                "delta": delta,
+                "accumulated": collected_answer,
+            },
+        )
+        await asyncio.sleep(0)
+
+    for source in response.sources:
+        yield _format_sse_event(
+            event="source",
+            payload=source.model_dump(exclude_none=True),
+        )
+        await asyncio.sleep(0)
+
+    for image in response.related_images:
+        yield _format_sse_event(
+            event="related_image",
+            payload=image.model_dump(exclude_none=True),
+        )
+        await asyncio.sleep(0)
+
+    if response.context_budget is not None:
+        yield _format_sse_event(
+            event="context_budget",
+            payload=response.context_budget.model_dump(exclude_none=True),
+        )
+        await asyncio.sleep(0)
+
+    if response.usage is not None:
+        yield _format_sse_event(
+            event="usage",
+            payload=response.usage.model_dump(exclude_none=True),
+        )
+        await asyncio.sleep(0)
+
+    yield _format_sse_event(
+        event="message.completed",
+        payload=response.model_dump(mode="json", exclude_none=True),
+    )
+
+
 @router.post("", response_model=ChatResponse)
 async def post_chat(
     request: ChatRequest,
@@ -37,11 +100,20 @@ async def post_chat(
 
 
 @router.post("/stream")
-async def post_chat_stream(_: ChatRequest) -> None:
-    raise AppError(
-        error_code="not_implemented",
-        message="流式问答接口尚未实现。",
-        status_code=501,
+async def post_chat_stream(
+    request: ChatRequest,
+    chat_service: ChatService = Depends(get_chat_service),
+) -> StreamingResponse:
+    session_id = request.session_id or generate_session_id()
+    response = chat_service.answer(request=request, session_id=session_id)
+    return StreamingResponse(
+        _stream_chat_response(response),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
