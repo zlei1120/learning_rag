@@ -98,6 +98,8 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 如果是旧的数据库 volume 或更早创建的云上实例，仍然要手动补一次上面的 `CREATE EXTENSION`。
 
+当前百炼 `text-embedding-v4` 的单次批量输入上限按 `10` 处理，所以默认 `EMBEDDING_BATCH_SIZE` 也已经收敛到 `10`。
+
 ### 4. 启动服务
 
 ```powershell

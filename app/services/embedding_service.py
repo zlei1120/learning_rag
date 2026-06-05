@@ -35,7 +35,10 @@ class EmbeddingService:
             return [self._build_mock_embedding(text) for text in texts]
 
         vectors: list[list[float]] = []
-        for batch in self._batched(texts, self.settings.embedding_batch_size):
+        # 百炼当前单次 embedding 输入上限是 10，这里再做一次运行时保护，
+        # 避免环境变量被误配后同步链路直接失败。
+        batch_size = min(max(self.settings.embedding_batch_size, 1), 10)
+        for batch in self._batched(texts, batch_size):
             response = self.client.embeddings.create(
                 model=self.settings.embedding_model,
                 input=batch,

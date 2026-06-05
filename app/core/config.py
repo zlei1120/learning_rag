@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     ingest_chunk_size: int = Field(default=900, alias="INGEST_CHUNK_SIZE")
     ingest_chunk_overlap: int = Field(default=120, alias="INGEST_CHUNK_OVERLAP")
     ingest_image_context_window: int = Field(default=220, alias="INGEST_IMAGE_CONTEXT_WINDOW")
-    embedding_batch_size: int = Field(default=16, alias="EMBEDDING_BATCH_SIZE")
+    embedding_batch_size: int = Field(default=10, alias="EMBEDDING_BATCH_SIZE")
     image_fetch_timeout_seconds: int = Field(default=20, alias="IMAGE_FETCH_TIMEOUT_SECONDS")
     image_ocr_min_pixels: int = Field(default=3072, alias="IMAGE_OCR_MIN_PIXELS")
     image_ocr_max_pixels: int = Field(default=8388608, alias="IMAGE_OCR_MAX_PIXELS")
@@ -91,6 +91,20 @@ class Settings(BaseSettings):
         if not normalized:
             return "https://dashscope.aliyuncs.com/compatible-mode/v1"
         return normalized
+
+    @field_validator("embedding_batch_size", mode="before")
+    @classmethod
+    def normalize_embedding_batch_size(cls, value: object) -> int:
+        """限制向量批量大小，兼容百炼当前单次最多 10 条输入。"""
+        if value is None or str(value).strip() == "":
+            return 10
+
+        size = int(value)
+        if size < 1:
+            return 1
+        if size > 10:
+            return 10
+        return size
 
 
 @lru_cache(maxsize=1)

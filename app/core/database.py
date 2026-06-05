@@ -5,7 +5,6 @@ from functools import lru_cache
 
 from sqlalchemy import MetaData, create_engine, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.schema import CreateSchema
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
@@ -57,7 +56,10 @@ def ensure_rag_storage_ready() -> None:
     schema_name = Base.metadata.schema
     with engine.begin() as conn:
         if schema_name:
-            conn.execute(CreateSchema(schema_name, if_not_exists=True))
+            # 这里不用 SQLAlchemy 的 CreateSchema(if_not_exists=True)，
+            # 避免在当前 PostgreSQL/驱动组合下触发重复创建 schema 的唯一约束异常。
+            quoted_schema = conn.dialect.identifier_preparer.quote_identifier(schema_name)
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema}"))
         Base.metadata.create_all(bind=conn)
 
 

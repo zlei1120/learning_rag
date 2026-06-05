@@ -47,26 +47,11 @@ class IngestService:
             self.session.commit()
 
             post = self._load_single_post(post_id=post_id, slug=slug)
-            source_document = self.blog_source_service.build_source_document(post)
-            markdown_result = self.markdown_ingest_service.parse(
-                slug=source_document.slug,
-                title=source_document.title,
-                content=source_document.content,
-            )
+            # 先结束读取博客真源的只读事务，避免后续长时间模型调用一直占着数据库连接。
+            self.session.commit()
 
-            document = self.rag_document_repository.upsert_from_source(source_document)
-            chunks = self.rag_chunk_repository.replace_for_document(document.id, markdown_result.chunks)
-            embeddings = self.embedding_service.embed_texts([chunk.content for chunk in markdown_result.chunks])
-            self.rag_chunk_repository.replace_embeddings(
-                chunks,
-                embeddings,
-                embedding_model=self.embedding_service.resolved_model_name,
-            )
-
-            image_features = self.image_understanding_service.describe_images(markdown_result.images)
-            images = self.rag_image_repository.replace_for_document(document.id, markdown_result.images, image_features)
-            self.rag_image_repository.rebuild_chunk_links(chunks, images)
-            self.rag_document_repository.mark_succeeded(document)
+            sync_payload = self._prepare_sync_payload(post)
+            self._persist_sync_payload(sync_payload)
             self.session.commit()
 
             self.ingest_job_repository.mark_succeeded(job)
@@ -102,10 +87,12 @@ class IngestService:
             self.session.commit()
 
             posts = self.blog_post_repository.list_posts_for_sync()
+            # 先释放读取文章列表时占用的连接，后续按文章逐篇短事务写入。
+            self.session.commit()
             for post in posts:
                 self._sync_post_record(post)
+                self.session.commit()
 
-            self.session.commit()
             self.ingest_job_repository.mark_succeeded(job)
             self.session.commit()
             return job
@@ -144,21 +131,41 @@ class IngestService:
 
     def _sync_post_record(self, post) -> None:
         """把单篇文章完整写入 RAG 存储。"""
+        sync_payload = self._prepare_sync_payload(post)
+        self._persist_sync_payload(sync_payload)
+
+    def _prepare_sync_payload(self, post) -> dict[str, object]:
+        """先完成文本切分、向量计算和图片理解，避免长耗时阶段占用数据库连接。"""
         source_document = self.blog_source_service.build_source_document(post)
         markdown_result = self.markdown_ingest_service.parse(
             slug=source_document.slug,
             title=source_document.title,
             content=source_document.content,
         )
+        embeddings = self.embedding_service.embed_texts([chunk.content for chunk in markdown_result.chunks])
+        image_features = self.image_understanding_service.describe_images(markdown_result.images)
+
+        return {
+            "source_document": source_document,
+            "markdown_result": markdown_result,
+            "embeddings": embeddings,
+            "image_features": image_features,
+        }
+
+    def _persist_sync_payload(self, sync_payload: dict[str, object]) -> None:
+        """把已经算好的同步结果一次性写回数据库。"""
+        source_document = sync_payload["source_document"]
+        markdown_result = sync_payload["markdown_result"]
+        embeddings = sync_payload["embeddings"]
+        image_features = sync_payload["image_features"]
+
         document = self.rag_document_repository.upsert_from_source(source_document)
         chunks = self.rag_chunk_repository.replace_for_document(document.id, markdown_result.chunks)
-        embeddings = self.embedding_service.embed_texts([chunk.content for chunk in markdown_result.chunks])
         self.rag_chunk_repository.replace_embeddings(
             chunks,
             embeddings,
             embedding_model=self.embedding_service.resolved_model_name,
         )
-        image_features = self.image_understanding_service.describe_images(markdown_result.images)
         images = self.rag_image_repository.replace_for_document(document.id, markdown_result.images, image_features)
         self.rag_image_repository.rebuild_chunk_links(chunks, images)
         self.rag_document_repository.mark_succeeded(document)
