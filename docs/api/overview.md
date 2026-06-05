@@ -62,6 +62,7 @@
 - `invalid_request`：请求参数不合法，通常是 `400`
 - `not_found`：资源不存在，通常是 `404`
 - `rate_limited`：限流，通常是 `429`
+- `database_unavailable`：数据库暂时不可用，通常是 `503`
 - `internal_error`：未处理异常，通常是 `500`
 
 ### 3. 请求链路标识

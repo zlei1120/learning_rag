@@ -101,6 +101,8 @@ IMAGE_OCR_MAX_PIXELS=8388608
 
 - `OPENAI_BASE_URL` 未配置或为空时，后端默认使用百炼 OpenAI 兼容地址
 - `BLOG_PUBLIC_BASE_URL` 用于把 `/uploads/...` 这类博客图片相对路径拼成可访问地址
+- 如果本地通过 SSH 隧道连接云上博客库，例如 `ssh -N -L 5433:127.0.0.1:5432 ubuntu@服务器地址`，`DATABASE_URL` 应使用本地监听端口 `5433`
+- `.env` 修改后需要重启后端服务，再重新验证 `/health`
 - `CHAT_PARENT_CHUNK_WINDOW_SIZE` 用于控制命中 chunk 前后补充多少个相邻 chunk，适合教程类文章保留步骤上下文
 - `CHAT_HISTORY_MESSAGE_LIMIT` 用于限制每轮直接回放到模型里的最近消息条数
 - `CHAT_SUMMARY_MAX_CHARS` 用于控制会话摘要记忆的最大长度

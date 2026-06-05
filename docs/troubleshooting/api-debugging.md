@@ -49,6 +49,21 @@
 - 直接展示后端 `message`
 - 如果有 `details.retry_after_seconds`，按这个时间提示稍后重试
 
+### 503 `database_unavailable`
+
+常见原因：
+
+- PostgreSQL 服务不可达
+- SSH 隧道没有建立，或本地端口写错
+- `DATABASE_URL` 的用户名、密码、库名和实际数据库不一致
+
+建议动作：
+
+1. 先调 `GET /health`，确认 `database` 是否为 `unavailable`
+2. 本地隧道场景确认 `.env` 里的端口是本地监听端口，例如 `5433`
+3. 修改 `.env` 后重启后端服务
+4. 如果端口可达但仍失败，重点检查远端数据库密码和用户权限
+
 ### 500 `internal_error`
 
 建议动作：

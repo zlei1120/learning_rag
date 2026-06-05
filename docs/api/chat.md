@@ -285,6 +285,32 @@ data: {"session_id":"sess_1234567890abcdef1234567890abcdef","answer":"这里的�
 - 直接展示 `message`
 - 如果有 `retry_after_seconds`，可以给出倒计时或“稍后重试”的提示
 
+### 503 `database_unavailable`
+
+适用于：
+
+- PostgreSQL 未启动
+- SSH 隧道端口不可达
+- `DATABASE_URL` 的端口、用户名、密码或库名不匹配
+
+响应示例：
+
+```json
+{
+  "error_code": "database_unavailable",
+  "message": "数据库暂时不可用，请确认 PostgreSQL 已启动且 DATABASE_URL 配置正确。",
+  "details": {
+    "exception_type": "OperationalError"
+  }
+}
+```
+
+联调建议：
+
+- 先看 `GET /health` 的 `database`
+- 如果本地通过 SSH 隧道连接云上库，确认 `.env` 使用的是本地监听端口，例如 `5433`
+- `.env` 修改后重启后端服务
+
 ### 500 `internal_error`
 
 - 统一展示“服务暂时不可用，请稍后再试”

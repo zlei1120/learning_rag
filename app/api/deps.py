@@ -6,6 +6,7 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.schemas.common import ErrorResponse
 
@@ -85,6 +86,17 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
         status_code=500,
         error_code="internal_error",
         message="服务内部发生未处理异常。",
+        details={"exception_type": exc.__class__.__name__},
+    )
+
+
+async def database_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.exception("数据库异常，exception_type={}", exc.__class__.__name__)
+    return _build_error_response(
+        request,
+        status_code=503,
+        error_code="database_unavailable",
+        message="数据库暂时不可用，请确认 PostgreSQL 已启动且 DATABASE_URL 配置正确。",
         details={"exception_type": exc.__class__.__name__},
     )
 

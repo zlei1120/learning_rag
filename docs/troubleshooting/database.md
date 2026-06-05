@@ -31,6 +31,8 @@ Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health
 
 优先检查数据库连接串和网络可达性。
 
+如果你刚改过 `.env`，要先重启已经运行中的后端服务，再重新调用健康检查。
+
 ### 2. 检查 `DATABASE_URL`
 
 确认 `.env` 中的：
@@ -42,6 +44,29 @@ Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health
 - 密码
 
 和实际部署一致。
+
+本地通过 SSH 隧道连接云上 PostgreSQL 时，要特别注意端口含义。比如：
+
+```powershell
+ssh -N -L 5433:127.0.0.1:5432 ubuntu@服务器地址
+```
+
+这表示：
+
+- 本机应用连接 `127.0.0.1:5433`
+- SSH 再把流量转发到云服务器上的 `127.0.0.1:5432`
+
+所以 `.env` 应写成本机监听端口：
+
+```env
+DATABASE_URL=postgresql+psycopg://blog:真实密码@127.0.0.1:5433/blog
+```
+
+如果 `5433` 端口可达，但日志里出现：
+
+- `password authentication failed for user "blog"`
+
+说明隧道和 PostgreSQL 都已经通了，接下来要检查的是远端数据库用户、密码或目标库名。
 
 ### 3. 检查博客真源表是否存在
 

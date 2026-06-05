@@ -43,6 +43,8 @@
 - 如果密码里有 `@`、`:`、`/` 这类特殊字符，必须先做 URL 编码
 - 例如 `password@123` 要写成 `password%40123`
 - 你当前这类“本地通过 SSH 隧道连云上博客库”的场景，常见写法就是 `127.0.0.1:5433`
+- 如果 SSH 命令是 `ssh -N -L 5433:127.0.0.1:5432 ubuntu@服务器地址`，这里就应该写本地端口 `5433`，而不是远端 PostgreSQL 的 `5432`
+- `.env` 修改后，已经运行中的 `uvicorn` 进程不会自动刷新配置，建议重启服务后再验证 `/health`
 
 ### `RAG_SCHEMA`
 
@@ -237,6 +239,12 @@ EMBEDDING_BATCH_SIZE=10
 IMAGE_FETCH_TIMEOUT_SECONDS=20
 IMAGE_OCR_MIN_PIXELS=3072
 IMAGE_OCR_MAX_PIXELS=8388608
+```
+
+如果通过 SSH 隧道连接云上博客库，例如本地监听 `5433`：
+
+```env
+DATABASE_URL=postgresql+psycopg://blog:真实密码@127.0.0.1:5433/blog
 ```
 
 ## 十、安全建议

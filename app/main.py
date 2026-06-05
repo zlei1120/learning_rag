@@ -7,10 +7,12 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import (
     AppError,
     app_error_handler,
+    database_error_handler,
     request_validation_error_handler,
     unhandled_error_handler,
 )
@@ -36,6 +38,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(SQLAlchemyError, database_error_handler)
     app.add_exception_handler(RequestValidationError, request_validation_error_handler)
     app.add_exception_handler(Exception, unhandled_error_handler)
 
