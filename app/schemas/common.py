@@ -48,6 +48,7 @@ class SourceItem(BaseModel):
     slug: str | None = None
     title_path: str | None = None
     content_excerpt: str | None = None
+    match_count: int | None = None
 
 
 class RelatedImage(BaseModel):
